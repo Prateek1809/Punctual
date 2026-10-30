@@ -169,4 +169,28 @@ export class TeamCalendarComponent {
   crowdedDays = computed(() => {
     return this.calendarDays().filter(d => d.isCurrentMonth && d.isCrowded);
   });
+
+  prevMonth() {
+    if (this.selectedMonth() === 1) {
+      this.selectedMonth.set(12);
+      this.selectedYear.update(y => y - 1);
+    } else {
+      this.selectedMonth.update(m => m - 1);
+    }
+  }
+
+  nextMonth() {
+    if (this.selectedMonth() === 12) {
+      this.selectedMonth.set(1);
+      this.selectedYear.update(y => y + 1);
+    } else {
+      this.selectedMonth.update(m => m + 1);
+    }
+  }
+
+  goToToday() {
+    const d = new Date();
+    this.selectedYear.set(d.getFullYear());
+    this.selectedMonth.set(d.getMonth() + 1);
+  }
 }

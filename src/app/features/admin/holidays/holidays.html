@@ -53,6 +53,25 @@
         Today
       </button>
 
+      <!-- Hidden File Input for Excel Import -->
+      <input 
+        #fileInput 
+        type="file" 
+        accept=".xlsx, .xls, .csv" 
+        (change)="onFileSelected($event)" 
+        class="hidden">
+
+      <!-- Import Excel Action (Admin only) -->
+      <button 
+        *ngIf="isAdmin()" 
+        type="button" 
+        (click)="fileInput.click()" 
+        class="soft-btn !h-10 !px-3.5 text-xs font-bold text-teal-700 dark:text-teal-400 hover:text-teal-900 flex items-center"
+        matTooltip="Import Holidays from XLSX/Excel file">
+        <mat-icon class="mr-1.5 !w-4 !h-4 !text-[18px]">upload_file</mat-icon>
+        Import Excel
+      </button>
+
       <!-- Add Holiday Action (Admin only) -->
       <button 
         *ngIf="isAdmin()" 
@@ -94,14 +113,14 @@
   <!-- Main Calendar Month Grid -->
   <div class="surface !p-6 sm:!p-8">
     <!-- Days of Week Header -->
-    <div class="grid grid-cols-7 gap-2 sm:gap-3 mb-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
-      <div>Sun</div>
-      <div>Mon</div>
-      <div>Tue</div>
-      <div>Wed</div>
-      <div>Thu</div>
-      <div>Fri</div>
-      <div>Sat</div>
+    <div class="grid grid-cols-7 gap-2 sm:gap-3 mb-2 text-center text-xs font-bold uppercase tracking-wider">
+      <div class="text-amber-600 dark:text-amber-400 font-extrabold">Sun</div>
+      <div class="text-slate-400">Mon</div>
+      <div class="text-slate-400">Tue</div>
+      <div class="text-slate-400">Wed</div>
+      <div class="text-slate-400">Thu</div>
+      <div class="text-slate-400">Fri</div>
+      <div class="text-amber-600 dark:text-amber-400 font-extrabold">Sat</div>
     </div>
 
     <!-- Calendar Day Cells -->
@@ -111,13 +130,14 @@
            class="calendar-tile min-h-[95px] sm:min-h-[115px] rounded-2xl border p-2.5 flex flex-col justify-between transition-all select-none"
            [ngClass]="{
              'invisible pointer-events-none': !day.isCurrentMonth,
-             'cursor-pointer hover:shadow-soft-well-sm': day.isCurrentMonth,
+             'cursor-pointer hover:shadow-soft-well-sm': day.isCurrentMonth && (!day.isWeekend || day.isHoliday),
+             'cursor-not-allowed opacity-55 pointer-events-none': day.isCurrentMonth && day.isWeekend && !day.isHoliday,
              'bg-purple-50/70 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 shadow-soft-surface-sm ring-1 ring-purple-200/50': day.isHoliday,
-             'bg-slate-100/50 dark:bg-slate-800/40 border-slate-200/50': day.isWeekend && !day.isHoliday,
+             'bg-amber-50/50 dark:bg-amber-950/20 border-dashed border-amber-300/70 dark:border-amber-800/50': day.isWeekend && !day.isHoliday,
              'ring-2 ring-blue-500 shadow-soft-well-sm': day.isToday && !day.isHoliday,
              'bg-soft-bg border-slate-200/60 dark:border-slate-800': day.isCurrentMonth && !day.isHoliday && !day.isWeekend
            }"
-           [matTooltip]="day.isHoliday ? ('🎉 Holiday: ' + day.holidayName + ' (Click to view)') : (day.isCurrentMonth ? 'Click to view day' : '')">
+           [matTooltip]="day.isHoliday ? ('🎉 Holiday: ' + day.holidayName + ' (Click to view)') : (day.isWeekend ? 'Weekend / Weekly Off (Disabled)' : (day.isCurrentMonth ? 'Click to view day' : ''))">
         
         <!-- Day Number & Today/Holiday Indicators -->
         <div class="flex items-center justify-between">
@@ -125,7 +145,8 @@
                 [ngClass]="{
                   'text-purple-700 dark:text-purple-300 font-black': day.isHoliday,
                   'text-blue-600 dark:text-blue-400': day.isToday && !day.isHoliday,
-                  'text-[#1F2937] dark:text-[#f8fafc]': !day.isHoliday && !day.isToday
+                  'text-amber-800/70 dark:text-amber-300/60': day.isWeekend && !day.isHoliday,
+                  'text-[#1F2937] dark:text-[#f8fafc]': !day.isHoliday && !day.isToday && !day.isWeekend
                 }">
             {{ day.dayNumber }}
           </span>
@@ -135,6 +156,9 @@
           </span>
           <span *ngIf="day.isHoliday" class="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200 shadow-soft-surface-sm">
             Holiday
+          </span>
+          <span *ngIf="day.isWeekend && !day.isHoliday" class="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40">
+            Off
           </span>
         </div>
 
@@ -158,7 +182,7 @@
           <span *ngIf="day.isHoliday" class="text-purple-600 dark:text-purple-400 sm:hidden">
             🎉 Event
           </span>
-          <span *ngIf="!day.isHoliday && day.isWeekend" class="text-slate-400">
+          <span *ngIf="!day.isHoliday && day.isWeekend" class="text-amber-700/60 dark:text-amber-400/60 text-[10px] font-bold">
             Weekend
           </span>
         </div>
@@ -309,3 +333,65 @@
     </form>
   </div>
 </div>
+
+<!-- Modal 3: Import Holidays from Excel Preview -->
+<div *ngIf="showImportModal()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+  <div class="surface !p-6 sm:!p-8 max-w-lg w-full shadow-soft-surface-lg space-y-5 animate-in fade-in zoom-in-95">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0 shadow-soft-surface-sm">
+          <mat-icon class="!w-5 !h-5 !text-[20px]">upload_file</mat-icon>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-[#1F2937] dark:text-[#f8fafc]">Import Holidays from Excel</h3>
+          <p class="text-xs text-slate-400">{{ importFileName() }} &bull; {{ importedHolidays().length }} holidays detected</p>
+        </div>
+      </div>
+      <button mat-icon-button (click)="closeImportModal()" class="soft-btn !w-8 !h-8 !p-1 !rounded-full">
+        <mat-icon class="!w-4 !h-4 !text-[18px]">close</mat-icon>
+      </button>
+    </div>
+
+    <!-- Preview List with scroll -->
+    <div class="space-y-2">
+      <div class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center justify-between">
+        <span>Detected Holidays</span>
+        <span class="text-teal-600 dark:text-teal-400 font-semibold lowercase">ready to import</span>
+      </div>
+
+      <div class="max-h-64 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-100 dark:divide-slate-800">
+        <div *ngFor="let h of importedHolidays(); let idx = index" class="pt-1.5 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2.5">
+            <span class="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-[10px] flex items-center justify-center shrink-0">
+              {{ idx + 1 }}
+            </span>
+            <span class="font-bold text-[#1F2937] dark:text-[#f8fafc]">{{ h.name }}</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-lg bg-soft-bg shadow-soft-surface-sm border border-slate-200/60 dark:border-slate-800 font-semibold text-slate-600 dark:text-slate-300">
+              {{ h.date | date:'mediumDate' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-200/60 dark:border-slate-800">
+      <button type="button" (click)="closeImportModal()" [disabled]="isImporting()" class="soft-btn !py-2 !px-4 text-xs font-semibold text-slate-600">
+        Cancel
+      </button>
+      <button 
+        type="button" 
+        [disabled]="isImporting() || importedHolidays().length === 0"
+        (click)="confirmImport()"
+        class="soft-btn-primary !h-11 !px-6 text-xs font-bold flex items-center gap-2">
+        <mat-spinner *ngIf="isImporting()" diameter="18" class="mr-1 !text-white"></mat-spinner>
+        <mat-icon *ngIf="!isImporting()" class="!w-4 !h-4 !text-[18px]">check</mat-icon>
+        <span>{{ isImporting() ? 'Importing Holidays...' : 'Confirm Import (' + importedHolidays().length + ' Holidays)' }}</span>
+      </button>
+    </div>
+  </div>
+</div>
+

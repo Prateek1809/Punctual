@@ -8,7 +8,16 @@
       </p>
     </div>
 
-    <div class="flex items-center gap-2 self-start sm:self-auto">
+    <!-- Quick Navigation & Controls -->
+    <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+      <button 
+        type="button" 
+        (click)="prevMonth()" 
+        class="soft-btn !w-10 !h-10 !p-1 !rounded-xl" 
+        matTooltip="Previous Month">
+        <mat-icon class="!w-5 !h-5 !text-[20px]">chevron_left</mat-icon>
+      </button>
+
       <mat-form-field appearance="outline" class="w-36 !mb-0" subscriptSizing="dynamic">
         <mat-select [value]="selectedMonth()" (selectionChange)="selectedMonth.set($event.value)">
           <mat-option *ngFor="let m of months" [value]="m.value">{{ m.name }}</mat-option>
@@ -20,8 +29,24 @@
           <mat-option [value]="2025">2025</mat-option>
           <mat-option [value]="2026">2026</mat-option>
           <mat-option [value]="2027">2027</mat-option>
+          <mat-option [value]="2028">2028</mat-option>
         </mat-select>
       </mat-form-field>
+
+      <button 
+        type="button" 
+        (click)="nextMonth()" 
+        class="soft-btn !w-10 !h-10 !p-1 !rounded-xl" 
+        matTooltip="Next Month">
+        <mat-icon class="!w-5 !h-5 !text-[20px]">chevron_right</mat-icon>
+      </button>
+
+      <button 
+        type="button" 
+        (click)="goToToday()" 
+        class="soft-btn !h-10 !px-3.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+        Today
+      </button>
     </div>
   </div>
 
@@ -46,39 +71,49 @@
   <!-- Main Calendar Month Grid -->
   <div class="surface !p-6 sm:!p-8">
     <!-- Days of Week Header -->
-    <div class="grid grid-cols-7 gap-2 sm:gap-3 mb-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
-      <div>Sun</div>
-      <div>Mon</div>
-      <div>Tue</div>
-      <div>Wed</div>
-      <div>Thu</div>
-      <div>Fri</div>
-      <div>Sat</div>
+    <div class="grid grid-cols-7 gap-2 sm:gap-3 mb-2 text-center text-xs font-bold uppercase tracking-wider">
+      <div class="text-amber-600 dark:text-amber-400 font-extrabold">Sun</div>
+      <div class="text-slate-400">Mon</div>
+      <div class="text-slate-400">Tue</div>
+      <div class="text-slate-400">Wed</div>
+      <div class="text-slate-400">Thu</div>
+      <div class="text-slate-400">Fri</div>
+      <div class="text-amber-600 dark:text-amber-400 font-extrabold">Sat</div>
     </div>
 
     <!-- Calendar Day Cells -->
     <div class="grid grid-cols-7 gap-2 sm:gap-3">
       <div *ngFor="let day of calendarDays()" 
-           class="calendar-tile min-h-[90px] sm:min-h-[110px] rounded-2xl border p-2.5 flex flex-col justify-between transition-all"
+           class="calendar-tile min-h-[90px] sm:min-h-[110px] rounded-2xl border p-2.5 flex flex-col justify-between transition-all select-none"
            [ngClass]="{
-             'invisible': !day.isCurrentMonth,
+             'invisible pointer-events-none': !day.isCurrentMonth,
+             'cursor-not-allowed opacity-55 pointer-events-none': day.isCurrentMonth && day.isWeekend && !day.isHoliday && day.leaves.length === 0,
              'bg-rose-50/70 dark:bg-rose-950/40 border-rose-200': day.isCrowded,
              'bg-purple-50/60 dark:bg-purple-950/40 border-purple-200': day.isHoliday && !day.isCrowded,
-             'bg-slate-100/50 dark:bg-slate-800/40 border-slate-200/50': day.isWeekend && !day.isHoliday && !day.isCrowded,
+             'bg-amber-50/50 dark:bg-amber-950/20 border-dashed border-amber-300/70 dark:border-amber-800/50': day.isWeekend && !day.isHoliday && !day.isCrowded,
              'bg-soft-bg border-slate-200/60 dark:border-slate-800': day.isCurrentMonth && !day.isCrowded && !day.isHoliday && !day.isWeekend
            }">
         
-        <!-- Day Number & Crowded Tag -->
+        <!-- Day Number & Crowded / Holiday / Weekend Tag -->
         <div class="flex items-center justify-between">
-          <span class="text-xs sm:text-sm font-extrabold" [class.text-rose-600]="day.isCrowded" [class.text-[#1F2937]]="!day.isCrowded" [class.dark:text-[#f8fafc]]="!day.isCrowded">
+          <span class="text-xs sm:text-sm font-extrabold" 
+                [ngClass]="{
+                  'text-rose-600': day.isCrowded,
+                  'text-purple-700 dark:text-purple-300 font-black': day.isHoliday && !day.isCrowded,
+                  'text-amber-800/70 dark:text-amber-300/60': day.isWeekend && !day.isHoliday && !day.isCrowded,
+                  'text-[#1F2937] dark:text-[#f8fafc]': !day.isCrowded && !day.isHoliday && !day.isWeekend
+                }">
             {{ day.dayNumber }}
           </span>
 
           <span *ngIf="day.isCrowded" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-200 text-rose-800 shadow-soft-surface-sm">
             Crowded
           </span>
-          <span *ngIf="day.isHoliday" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-200 text-purple-800 shadow-soft-surface-sm">
+          <span *ngIf="day.isHoliday && !day.isCrowded" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-200 text-purple-800 shadow-soft-surface-sm">
             Holiday
+          </span>
+          <span *ngIf="day.isWeekend && !day.isHoliday && !day.isCrowded" class="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40">
+            Off
           </span>
         </div>
 
@@ -99,8 +134,10 @@
         </div>
 
         <!-- Bottom status line -->
-        <div class="text-[10px] text-slate-400 font-semibold">
+        <div class="text-[10px] font-semibold"
+             [ngClass]="day.isWeekend && !day.isHoliday && day.leaves.length === 0 ? 'text-amber-700/60 dark:text-amber-400/60' : 'text-slate-400'">
           <span *ngIf="day.leaves.length > 0">{{ day.leaves.length }} off</span>
+          <span *ngIf="day.leaves.length === 0 && day.isWeekend && !day.isHoliday">Weekend</span>
         </div>
       </div>
     </div>

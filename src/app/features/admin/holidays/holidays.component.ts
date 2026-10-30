@@ -14,6 +14,7 @@ import { AuthService } from '../../../core/auth.service';
 import { Holiday } from '../../../core/models';
 import { getISTDateString } from '../../../core/date-utils';
 import { toSignal } from '@angular/core/rxjs-interop';
+import * as XLSX from 'xlsx';
 
 export interface CalendarHolidayDay {
   dayNumber: number;
@@ -23,6 +24,91 @@ export interface CalendarHolidayDay {
   isToday: boolean;
   isHoliday: boolean;
   holidayName?: string;
+}
+
+function parseExcelDate(val: any): string | null {
+  if (val === null || val === undefined || val === '') return null;
+
+  // Case 1: Numeric serial number (e.g. 46048 for 2026-01-26)
+  if (typeof val === 'number') {
+    const utcMs = Math.round((val - 25569) * 86400 * 1000);
+    const d = new Date(utcMs);
+    const yyyy = d.getUTCFullYear();
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  // Case 2: Date object
+  if (val instanceof Date) {
+    const yyyy = val.getFullYear();
+    const mm = String(val.getMonth() + 1).padStart(2, '0');
+    const dd = String(val.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  // Case 3: String
+  const str = String(val).trim();
+  if (/^\d{5}$/.test(str)) {
+    const num = Number(str);
+    const utcMs = Math.round((num - 25569) * 86400 * 1000);
+    const d = new Date(utcMs);
+    const yyyy = d.getUTCFullYear();
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+
+  const dmyMatch = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if (dmyMatch) {
+    const dd = dmyMatch[1].padStart(2, '0');
+    const mm = dmyMatch[2].padStart(2, '0');
+    const yyyy = dmyMatch[3];
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    const yyyy = parsed.getFullYear();
+    const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+    const dd = String(parsed.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  return null;
+}
+
+function resolveHolidayRow(row: any): { name: string; date: string } | null {
+  if (!row || typeof row !== 'object') return null;
+
+  let name = '';
+  let dateRaw: any = null;
+
+  for (const key of Object.keys(row)) {
+    const k = key.toLowerCase().trim();
+    if (k.includes('holiday') || k.includes('occasion') || k.includes('festival') || k.includes('event')) {
+      name = String(row[key] || '').trim();
+    } else if (k.includes('date')) {
+      dateRaw = row[key];
+    } else if (!name && (k.includes('name') || k.includes('title'))) {
+      name = String(row[key] || '').trim();
+    }
+  }
+
+  if (!name || dateRaw === null || dateRaw === undefined) {
+    const values = Object.values(row);
+    if (!name && typeof values[0] === 'string' && isNaN(Number(values[0]))) {
+      name = String(values[0]).trim();
+    }
+    if (dateRaw === null && values[1] !== undefined) {
+      dateRaw = values[1];
+    }
+  }
+
+  const date = parseExcelDate(dateRaw);
+  return (name && date) ? { name, date } : null;
 }
 
 @Component({
@@ -55,6 +141,12 @@ export class HolidaysComponent {
   selectedDay = signal<CalendarHolidayDay | null>(null);
   showEventModal = signal(false);
   showAddModal = signal(false);
+
+  // Excel Import Signals
+  showImportModal = signal(false);
+  importedHolidays = signal<{ name: string; date: string }[]>([]);
+  isImporting = signal(false);
+  importFileName = signal('');
 
   isAdding = signal(false);
   deletingId = signal<string | null>(null);
@@ -183,7 +275,7 @@ export class HolidaysComponent {
   }
 
   onDayClick(day: CalendarHolidayDay) {
-    if (!day.isCurrentMonth) return;
+    if (!day.isCurrentMonth || (day.isWeekend && !day.isHoliday)) return;
     this.selectedDay.set(day);
     this.showEventModal.set(true);
   }
@@ -240,6 +332,88 @@ export class HolidaysComponent {
       this.snackBar.open(e.message || 'Error removing holiday', 'Close', { duration: 4000 });
     } finally {
       this.deletingId.set(null);
+    }
+  }
+
+  // Excel (.xlsx) Import Handling
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    this.importFileName.set(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      try {
+        const buffer = e.target.result;
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rawRows = XLSX.utils.sheet_to_json(sheet);
+
+        const parsedList: { name: string; date: string }[] = [];
+        for (const row of rawRows) {
+          const item = resolveHolidayRow(row);
+          if (item && item.name && item.date) {
+            parsedList.push(item);
+          }
+        }
+
+        if (parsedList.length === 0) {
+          this.snackBar.open(
+            'No valid holidays found. Please verify column headers: "Holiday / Occasion" and "Date".',
+            'Close',
+            { duration: 5000 }
+          );
+          input.value = '';
+          return;
+        }
+
+        // Sort by date ascending
+        parsedList.sort((a, b) => a.date.localeCompare(b.date));
+
+        this.importedHolidays.set(parsedList);
+        this.showImportModal.set(true);
+      } catch (err: any) {
+        this.snackBar.open('Failed to read Excel file: ' + (err.message || 'Invalid format'), 'Close', {
+          duration: 4000
+        });
+      } finally {
+        input.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  closeImportModal() {
+    this.showImportModal.set(false);
+    this.importedHolidays.set([]);
+  }
+
+  async confirmImport() {
+    const list = this.importedHolidays();
+    if (list.length === 0 || this.isImporting()) return;
+
+    this.isImporting.set(true);
+    try {
+      let importedCount = 0;
+      let sampleYear = this.selectedYear();
+
+      for (const h of list) {
+        await this.settingsService.addHoliday(h.date, h.name);
+        importedCount++;
+        const y = Number(h.date.split('-')[0]);
+        if (!isNaN(y)) sampleYear = y;
+      }
+
+      this.selectedYear.set(sampleYear);
+      this.snackBar.open(`Successfully imported ${importedCount} holidays!`, 'Close', { duration: 4000 });
+      this.closeImportModal();
+    } catch (e: any) {
+      this.snackBar.open(e.message || 'Error importing holidays', 'Close', { duration: 4000 });
+    } finally {
+      this.isImporting.set(false);
     }
   }
 }
