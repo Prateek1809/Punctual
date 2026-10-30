@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,6 +12,7 @@ import { Firestore, collection, collectionData, doc, docData } from '@angular/fi
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UserProfile, AttendanceRecord, AttendanceStatus } from '../../../core/models';
+import { SettingsService } from '../../../core/settings.service';
 import { getISTDateString, formatTime12h, formatDuration } from '../../../core/date-utils';
 import { StatusChipComponent } from '../../../shared/status-chip/status-chip.component';
 import { Observable } from 'rxjs';
@@ -37,6 +38,7 @@ export class CorrectionsComponent {
   private fb = inject(FormBuilder);
   private firestore = inject(Firestore);
   private functions = inject(Functions);
+  private settingsService = inject(SettingsService);
   private snackBar = inject(MatSnackBar);
 
   selectedEmployeeUid = signal<string>('');
@@ -50,11 +52,31 @@ export class CorrectionsComponent {
   users$ = collectionData(collection(this.firestore, 'users'), { idField: 'uid' }) as Observable<UserProfile[]>;
   users = toSignal(this.users$, { initialValue: [] });
 
+  settings$ = this.settingsService.getSettings();
+  settings = toSignal(this.settings$, { initialValue: null });
+
   correctionForm = this.fb.group({
-    checkInTime: ['10:10', Validators.required],
-    checkOutTime: ['19:30', Validators.required],
+    checkInTime: ['', Validators.required],
+    checkOutTime: ['', Validators.required],
     status: ['present' as AttendanceStatus, Validators.required],
     note: ['', [Validators.required, Validators.minLength(4)]]
+  }, {
+    validators: (group: AbstractControl): ValidationErrors | null => {
+      const inTime = group.get('checkInTime')?.value;
+      const outTime = group.get('checkOutTime')?.value;
+      if (!inTime || !outTime) return null;
+      if (inTime >= outTime) {
+        group.get('checkOutTime')?.setErrors({ endBeforeStart: true });
+        return { timeOrder: true };
+      } else {
+        if (group.get('checkOutTime')?.hasError('endBeforeStart')) {
+          const errors = { ...group.get('checkOutTime')?.errors };
+          delete errors['endBeforeStart'];
+          group.get('checkOutTime')?.setErrors(Object.keys(errors).length ? errors : null);
+        }
+      }
+      return null;
+    }
   });
 
   async fetchRecord() {
@@ -65,6 +87,9 @@ export class CorrectionsComponent {
       return;
     }
 
+    const defaultIn = this.settings()?.officeStart || '';
+    const defaultOut = this.settings()?.officeEnd || '';
+
     this.isLoadingRecord.set(true);
     try {
       const docRef = doc(this.firestore, `attendance/${uid}_${date}`);
@@ -73,8 +98,8 @@ export class CorrectionsComponent {
           const r = data as AttendanceRecord;
           this.currentRecord.set(r);
           // Extract time portion HH:mm
-          const inTime = r.checkIn ? new Date(r.checkIn).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : '10:10';
-          const outTime = r.checkOut ? new Date(r.checkOut).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : '19:30';
+          const inTime = r.checkIn ? new Date(r.checkIn).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : defaultIn;
+          const outTime = r.checkOut ? new Date(r.checkOut).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : defaultOut;
           this.correctionForm.patchValue({
             checkInTime: inTime,
             checkOutTime: outTime,
@@ -84,8 +109,8 @@ export class CorrectionsComponent {
         } else {
           this.currentRecord.set(null);
           this.correctionForm.patchValue({
-            checkInTime: '10:10',
-            checkOutTime: '19:30',
+            checkInTime: defaultIn,
+            checkOutTime: defaultOut,
             status: 'present',
             note: ''
           });
@@ -100,7 +125,12 @@ export class CorrectionsComponent {
   async saveCorrection() {
     const uid = this.selectedEmployeeUid();
     const date = this.selectedDate();
-    if (!uid || !date || this.correctionForm.invalid || this.isSaving()) return;
+    if (!uid || !date || this.correctionForm.invalid || this.isSaving()) {
+      if (this.correctionForm.get('checkOutTime')?.hasError('endBeforeStart')) {
+        this.snackBar.open('Check-out time must be after check-in time.', 'Close', { duration: 3500 });
+      }
+      return;
+    }
 
     this.isSaving.set(true);
     try {

@@ -14,11 +14,24 @@ export function getISTDateString(date: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+export function getISTDateFormatted(date: Date = new Date()): string {
+  const istDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  return istDate.toLocaleDateString('en-US', {
+    timeZone: 'Asia/Kolkata',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short'
+  });
+}
+
 export function getISTTimeString(date: Date = new Date()): string {
   const istDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-  const hours = String(istDate.getHours()).padStart(2, '0');
+  const hours24 = istDate.getHours();
+  const ampm = hours24 >= 12 ? 'PM' : 'AM';
+  const hours12 = hours24 % 12 || 12;
+  const hoursStr = String(hours12).padStart(2, '0');
   const minutes = String(istDate.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
+  return `${hoursStr}:${minutes} ${ampm}`;
 }
 
 export function formatTime12h(isoOrTimeStr?: string): string {

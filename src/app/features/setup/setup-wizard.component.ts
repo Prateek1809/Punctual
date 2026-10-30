@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -48,16 +48,32 @@ export class SetupWizardComponent {
     adminPassword: ['', [Validators.required, Validators.minLength(6)]],
 
     // Step 2: Office & Geofence
-    officeName: ['Main Headquarters', Validators.required],
-    officeLat: [19.0760, Validators.required],
-    officeLng: [72.8777, Validators.required],
-    radiusM: [200, [Validators.required, Validators.min(20)]],
+    officeName: ['', Validators.required],
+    officeLat: [null as number | null, Validators.required],
+    officeLng: [null as number | null, Validators.required],
+    radiusM: [200, [Validators.required, Validators.min(10)]],
 
-    // Step 3: Timings & Holidays
-    officeStart: ['10:10', Validators.required],
-    officeEnd: ['19:30', Validators.required],
-    graceMinutes: [10, [Validators.required, Validators.min(0)]],
-    seedHolidays: [true]
+    // Step 3: Timings
+    officeStart: ['', Validators.required],
+    officeEnd: ['', Validators.required],
+    graceMinutes: [10, [Validators.required, Validators.min(0)]]
+  }, {
+    validators: (group: AbstractControl): ValidationErrors | null => {
+      const s = group.get('officeStart')?.value;
+      const e = group.get('officeEnd')?.value;
+      if (!s || !e) return null;
+      if (s >= e) {
+        group.get('officeEnd')?.setErrors({ endBeforeStart: true });
+        return { timeOrder: true };
+      } else {
+        if (group.get('officeEnd')?.hasError('endBeforeStart')) {
+          const errors = { ...group.get('officeEnd')?.errors };
+          delete errors['endBeforeStart'];
+          group.get('officeEnd')?.setErrors(Object.keys(errors).length ? errors : null);
+        }
+      }
+      return null;
+    }
   });
 
   nextStep() {
@@ -78,6 +94,22 @@ export class SetupWizardComponent {
       const rad = this.setupForm.get('radiusM');
       if (oName?.invalid || lat?.invalid || lng?.invalid || rad?.invalid) {
         oName?.markAsTouched();
+        lat?.markAsTouched();
+        lng?.markAsTouched();
+        rad?.markAsTouched();
+        return;
+      }
+    } else if (this.currentStep() === 3) {
+      const oStart = this.setupForm.get('officeStart');
+      const oEnd = this.setupForm.get('officeEnd');
+      const grace = this.setupForm.get('graceMinutes');
+      if (oStart?.invalid || oEnd?.invalid || grace?.invalid || (oStart?.value && oEnd?.value && oStart.value >= oEnd.value)) {
+        oStart?.markAsTouched();
+        oEnd?.markAsTouched();
+        grace?.markAsTouched();
+        if (oStart?.value && oEnd?.value && oStart.value >= oEnd.value) {
+          this.snackBar.open('Office end time must be after start time.', 'Close', { duration: 3500 });
+        }
         return;
       }
     }
@@ -128,8 +160,7 @@ export class SetupWizardComponent {
         radiusM: Number(val.radiusM),
         officeStart: val.officeStart,
         officeEnd: val.officeEnd,
-        graceMinutes: Number(val.graceMinutes),
-        seedHolidays: val.seedHolidays
+        graceMinutes: Number(val.graceMinutes)
       });
 
       this.snackBar.open('Initial setup complete! Logging in as Administrator...', '', { duration: 2500 });

@@ -2,8 +2,8 @@
   <!-- Header with Month/Year Selection -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Team Calendar</h2>
-      <p class="text-slate-500 text-sm mt-0.5">
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-[#1F2937] dark:text-[#f8fafc] tracking-tight">Team Calendar</h2>
+      <p class="text-[#4B5563] dark:text-[#94a3b8] text-sm mt-0.5">
         Monthly overview of scheduled team leaves and holiday absences.
       </p>
     </div>
@@ -26,17 +26,17 @@
   </div>
 
   <!-- Crowding Warning Banner (if multiple people off on same day) -->
-  <div *ngIf="crowdedDays().length > 0" class="p-4 sm:p-5 rounded-3xl bg-rose-50 border border-rose-200 flex items-start gap-3.5 text-rose-900 text-xs sm:text-sm">
-    <div class="w-8 h-8 rounded-full bg-rose-200 text-rose-800 flex items-center justify-center shrink-0">
+  <div *ngIf="crowdedDays().length > 0" class="surface !p-5 !bg-rose-50/70 dark:!bg-rose-950/40 !border-rose-200/80 flex items-start gap-3.5 text-rose-900 dark:text-rose-300 text-xs sm:text-sm">
+    <div class="w-8 h-8 rounded-full bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200 flex items-center justify-center shrink-0 shadow-soft-surface-sm">
       <mat-icon class="!w-5 !h-5 !text-[20px]">warning</mat-icon>
     </div>
     <div>
-      <span class="font-bold text-rose-950">High Absence Warning (Crowding Alert):</span>
-      <p class="mt-0.5 text-rose-800">
+      <span class="font-bold text-rose-950 dark:text-rose-200">High Absence Warning (Crowding Alert):</span>
+      <p class="mt-0.5 text-rose-800 dark:text-rose-300">
         Multiple team members are scheduled to be off concurrently on:
       </p>
       <div class="flex flex-wrap gap-2 mt-2">
-        <span *ngFor="let cd of crowdedDays()" class="px-2.5 py-1 rounded-xl bg-white border border-rose-200 font-semibold text-rose-900">
+        <span *ngFor="let cd of crowdedDays()" class="px-2.5 py-1 rounded-xl bg-soft-bg shadow-soft-surface-sm border border-rose-200/80 font-bold text-rose-900 dark:text-rose-300">
           Day {{ cd.dayNumber }} ({{ cd.leaves.length }} off)
         </span>
       </div>
@@ -44,7 +44,7 @@
   </div>
 
   <!-- Main Calendar Month Grid -->
-  <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm">
+  <div class="surface !p-6 sm:!p-8">
     <!-- Days of Week Header -->
     <div class="grid grid-cols-7 gap-2 sm:gap-3 mb-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
       <div>Sun</div>
@@ -59,39 +59,39 @@
     <!-- Calendar Day Cells -->
     <div class="grid grid-cols-7 gap-2 sm:gap-3">
       <div *ngFor="let day of calendarDays()" 
-           class="min-h-[90px] sm:min-h-[110px] rounded-2xl border p-2 flex flex-col justify-between transition-all"
+           class="calendar-tile min-h-[90px] sm:min-h-[110px] rounded-2xl border p-2.5 flex flex-col justify-between transition-all"
            [ngClass]="{
              'invisible': !day.isCurrentMonth,
-             'bg-rose-50/70 border-rose-200': day.isCrowded,
-             'bg-purple-50/60 border-purple-200': day.isHoliday && !day.isCrowded,
-             'bg-slate-50/60 border-slate-100': day.isWeekend && !day.isHoliday && !day.isCrowded,
-             'bg-white border-slate-200': day.isCurrentMonth && !day.isCrowded && !day.isHoliday && !day.isWeekend
+             'bg-rose-50/70 dark:bg-rose-950/40 border-rose-200': day.isCrowded,
+             'bg-purple-50/60 dark:bg-purple-950/40 border-purple-200': day.isHoliday && !day.isCrowded,
+             'bg-slate-100/50 dark:bg-slate-800/40 border-slate-200/50': day.isWeekend && !day.isHoliday && !day.isCrowded,
+             'bg-soft-bg border-slate-200/60 dark:border-slate-800': day.isCurrentMonth && !day.isCrowded && !day.isHoliday && !day.isWeekend
            }">
         
         <!-- Day Number & Crowded Tag -->
         <div class="flex items-center justify-between">
-          <span class="text-xs sm:text-sm font-extrabold" [class.text-rose-600]="day.isCrowded" [class.text-slate-800]="!day.isCrowded">
+          <span class="text-xs sm:text-sm font-extrabold" [class.text-rose-600]="day.isCrowded" [class.text-[#1F2937]]="!day.isCrowded" [class.dark:text-[#f8fafc]]="!day.isCrowded">
             {{ day.dayNumber }}
           </span>
 
-          <span *ngIf="day.isCrowded" class="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-rose-200 text-rose-800">
+          <span *ngIf="day.isCrowded" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-200 text-rose-800 shadow-soft-surface-sm">
             Crowded
           </span>
-          <span *ngIf="day.isHoliday" class="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-purple-200 text-purple-800">
+          <span *ngIf="day.isHoliday" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-200 text-purple-800 shadow-soft-surface-sm">
             Holiday
           </span>
         </div>
 
         <!-- Leaves avatars / pills list -->
         <div class="space-y-1 my-1 overflow-y-auto max-h-16">
-          <div *ngIf="day.isHoliday" class="text-[10px] font-semibold text-purple-700 truncate" [title]="day.holidayName">
+          <div *ngIf="day.isHoliday" class="text-[10px] font-semibold text-purple-700 dark:text-purple-400 truncate" [title]="day.holidayName">
             {{ day.holidayName }}
           </div>
 
           <div *ngFor="let l of day.leaves" 
-               class="flex items-center gap-1.5 px-1.5 py-0.5 rounded-lg bg-indigo-50 border border-indigo-100 text-[10px] font-semibold text-indigo-900 truncate"
+               class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-soft-bg shadow-soft-surface-sm border border-slate-200/50 dark:border-slate-800 text-[10px] font-semibold text-blue-900 dark:text-blue-300 truncate"
                [matTooltip]="l.name + ': ' + (l.isHalfDay ? 'Half Day' : 'Full Day') + ' - ' + l.reason">
-            <span class="w-4 h-4 rounded-full bg-indigo-600 text-white font-bold text-[8px] flex items-center justify-center shrink-0">
+            <span class="w-4 h-4 rounded-full bg-blue-600 text-white font-bold text-[8px] flex items-center justify-center shrink-0">
               {{ l.initials }}
             </span>
             <span class="truncate">{{ l.name }}</span>
@@ -99,7 +99,7 @@
         </div>
 
         <!-- Bottom status line -->
-        <div class="text-[10px] text-slate-400 font-medium">
+        <div class="text-[10px] text-slate-400 font-semibold">
           <span *ngIf="day.leaves.length > 0">{{ day.leaves.length }} off</span>
         </div>
       </div>

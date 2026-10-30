@@ -1,6 +1,6 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -47,24 +47,41 @@ export class CompanySettingsComponent implements OnInit {
   selectedWeeklyOffs = signal<number[]>([0, 6]); // Sunday, Saturday
 
   settingsForm = this.fb.group({
-    officeStart: ['10:10', Validators.required],
-    officeEnd: ['19:30', Validators.required],
+    officeStart: ['', Validators.required],
+    officeEnd: ['', Validators.required],
     graceMinutes: [10, [Validators.required, Validators.min(0)]],
-    halfDayMinutes: [270, [Validators.required, Validators.min(60)]],
-    fullDayMinutes: [540, [Validators.required, Validators.min(120)]],
+    halfDayMinutes: [240, [Validators.required, Validators.min(60)]],
+    fullDayMinutes: [480, [Validators.required, Validators.min(120)]],
     monthlyQuota: [1.5, [Validators.required, Validators.min(0)]],
     yearStartMonth: [1, [Validators.required, Validators.min(1), Validators.max(12)]]
+  }, {
+    validators: (group: AbstractControl): ValidationErrors | null => {
+      const s = group.get('officeStart')?.value;
+      const e = group.get('officeEnd')?.value;
+      if (!s || !e) return null;
+      if (s >= e) {
+        group.get('officeEnd')?.setErrors({ endBeforeStart: true });
+        return { timeOrder: true };
+      } else {
+        if (group.get('officeEnd')?.hasError('endBeforeStart')) {
+          const errors = { ...group.get('officeEnd')?.errors };
+          delete errors['endBeforeStart'];
+          group.get('officeEnd')?.setErrors(Object.keys(errors).length ? errors : null);
+        }
+      }
+      return null;
+    }
   });
 
   ngOnInit() {
     this.settingsService.getSettings().subscribe(s => {
       this.settingsForm.patchValue({
-        officeStart: s.officeStart || '10:10',
-        officeEnd: s.officeEnd || '19:30',
+        officeStart: s.officeStart || '',
+        officeEnd: s.officeEnd || '',
         graceMinutes: s.graceMinutes ?? 10,
-        halfDayMinutes: s.halfDayMinutes || 270,
-        fullDayMinutes: s.fullDayMinutes || 540,
-        monthlyQuota: s.monthlyQuota || 1.5,
+        halfDayMinutes: s.halfDayMinutes || 240,
+        fullDayMinutes: s.fullDayMinutes || 480,
+        monthlyQuota: s.monthlyQuota ?? 1.5,
         yearStartMonth: s.yearStartMonth || 1
       });
 
@@ -87,7 +104,12 @@ export class CompanySettingsComponent implements OnInit {
   }
 
   async saveSettings() {
-    if (this.settingsForm.invalid || this.isSaving()) return;
+    if (this.settingsForm.invalid || this.isSaving()) {
+      if (this.settingsForm.get('officeEnd')?.hasError('endBeforeStart')) {
+        this.snackBar.open('Office end time must be after office start time.', 'Close', { duration: 3500 });
+      }
+      return;
+    }
 
     this.isSaving.set(true);
     try {

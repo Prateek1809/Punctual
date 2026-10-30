@@ -4,27 +4,20 @@ import { Observable, map, of } from 'rxjs';
 import { CompanySettings, Holiday } from './models';
 
 export const DEFAULT_SETTINGS: CompanySettings = {
-  officeStart: '10:10',
-  officeEnd: '19:30',
-  graceMinutes: 10,
+  officeStart: '',
+  officeEnd: '',
+  graceMinutes: 0,
   weeklyOffs: [0, 6], // Sunday, Saturday
-  halfDayMinutes: 270, // 4.5 hours
-  fullDayMinutes: 540, // 9 hours
+  halfDayMinutes: 240, // 4 hours
+  fullDayMinutes: 480, // 8 hours
   yearStartMonth: 1,
   monthlyQuota: 1.5,
   attendancePolicy: {
     mode: 'either',
     onFailure: 'flag',
-    allowedIps: ['127.0.0.1'],
+    allowedIps: [],
     maxAccuracyM: 300,
-    offices: [
-      {
-        name: 'Head Office',
-        lat: 19.0760,
-        lng: 72.8777,
-        radiusM: 200
-      }
-    ]
+    offices: []
   }
 };
 
@@ -67,23 +60,5 @@ export class SettingsService {
   async deleteHoliday(dateId: string): Promise<void> {
     const docRef = doc(this.firestore, `holidays/${dateId}`);
     await deleteDoc(docRef);
-  }
-
-  async seedStandardHolidays(year: number = new Date().getFullYear()): Promise<void> {
-    const holidays = [
-      { date: `${year}-01-26`, name: 'Republic Day' },
-      { date: `${year}-03-25`, name: 'Holi' },
-      { date: `${year}-04-14`, name: 'Ambedkar Jayanti' },
-      { date: `${year}-05-01`, name: 'Maharashtra Day / May Day' },
-      { date: `${year}-08-15`, name: 'Independence Day' },
-      { date: `${year}-10-02`, name: 'Gandhi Jayanti' },
-      { date: `${year}-10-20`, name: 'Dussehra' },
-      { date: `${year}-11-01`, name: 'Diwali' },
-      { date: `${year}-12-25`, name: 'Christmas Day' },
-    ];
-
-    for (const h of holidays) {
-      await this.addHoliday(h.date, h.name);
-    }
   }
 }

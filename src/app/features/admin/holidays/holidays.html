@@ -1,70 +1,30 @@
-<div class="space-y-6 sm:space-y-8 animate-in fade-in duration-300 max-w-4xl">
-  <!-- Header -->
+<div class="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
+  <!-- Header with Month & Year Navigation -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Holiday Calendar</h2>
-      <p class="text-slate-500 text-sm mt-0.5">
-        Manage official company holidays. These days are automatically excluded from employee leave counts.
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-[#1F2937] dark:text-[#f8fafc] tracking-tight">Holiday Calendar</h2>
+      <p class="text-[#4B5563] dark:text-[#94a3b8] text-sm mt-0.5">
+        Official company holidays and observed non-working days.
       </p>
     </div>
 
-    <!-- Seed Holidays Action -->
-    <button 
-      mat-stroked-button 
-      (click)="seedHolidays()" 
-      [disabled]="isSeeding()"
-      class="!h-11 !px-4 !rounded-xl self-start sm:self-auto">
-      <mat-spinner *ngIf="isSeeding()" diameter="16" class="mr-2"></mat-spinner>
-      <mat-icon *ngIf="!isSeeding()" class="text-purple-600 mr-1">auto_awesome</mat-icon>
-      <span>Seed Standard Holidays</span>
-    </button>
-  </div>
+    <!-- Quick Navigation & Controls -->
+    <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+      <!-- Prev Month Button -->
+      <button 
+        type="button" 
+        (click)="prevMonth()" 
+        class="soft-btn !w-10 !h-10 !p-1 !rounded-xl" 
+        matTooltip="Previous Month">
+        <mat-icon class="!w-5 !h-5 !text-[20px]">chevron_left</mat-icon>
+      </button>
 
-  <!-- Add Holiday Form Card -->
-  <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-4">
-    <div class="border-b border-slate-100 pb-3">
-      <h3 class="text-lg font-bold text-slate-900">Add New Holiday</h3>
-      <p class="text-xs text-slate-400">Specify holiday date and description</p>
-    </div>
-
-    <form [formGroup]="holidayForm" (ngSubmit)="addHoliday()" class="flex flex-col sm:flex-row sm:items-center gap-4">
-      <div class="w-full sm:w-56">
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Date</label>
-        <mat-form-field appearance="outline" class="w-full">
-          <input matInput type="date" formControlName="date">
-          <mat-error *ngIf="holidayForm.get('date')?.hasError('required')">Date is required</mat-error>
-        </mat-form-field>
-      </div>
-
-      <div class="flex-1">
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Holiday Name</label>
-        <mat-form-field appearance="outline" class="w-full">
-          <input matInput formControlName="name" placeholder="e.g. Diwali, Republic Day, Christmas...">
-          <mat-error *ngIf="holidayForm.get('name')?.hasError('required')">Name is required</mat-error>
-        </mat-form-field>
-      </div>
-
-      <div class="sm:self-center sm:pt-4">
-        <button 
-          mat-flat-button 
-          color="primary" 
-          type="submit" 
-          [disabled]="holidayForm.invalid || isAdding()"
-          class="!h-12 !px-6 !rounded-xl !bg-indigo-600 whitespace-nowrap">
-          <mat-spinner *ngIf="isAdding()" diameter="18" class="mr-2"></mat-spinner>
-          <span>{{ isAdding() ? 'Adding...' : 'Add Holiday' }}</span>
-        </button>
-      </div>
-    </form>
-  </div>
-
-  <!-- Holidays List Card -->
-  <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 sm:p-8 space-y-4">
-    <div class="flex items-center justify-between border-b border-slate-100 pb-4">
-      <div>
-        <h3 class="text-lg font-bold text-slate-900">Scheduled Holidays ({{ filteredHolidays().length }})</h3>
-        <p class="text-xs text-slate-400">For calendar year {{ selectedYear() }}</p>
-      </div>
+      <!-- Month Selector -->
+      <mat-form-field appearance="outline" class="w-36 !mb-0" subscriptSizing="dynamic">
+        <mat-select [value]="selectedMonth()" (selectionChange)="selectedMonth.set($event.value)">
+          <mat-option *ngFor="let m of months" [value]="m.value">{{ m.name }}</mat-option>
+        </mat-select>
+      </mat-form-field>
 
       <!-- Year Selector -->
       <mat-form-field appearance="outline" class="w-28 !mb-0" subscriptSizing="dynamic">
@@ -72,44 +32,280 @@
           <mat-option [value]="2025">2025</mat-option>
           <mat-option [value]="2026">2026</mat-option>
           <mat-option [value]="2027">2027</mat-option>
+          <mat-option [value]="2028">2028</mat-option>
         </mat-select>
       </mat-form-field>
+
+      <!-- Next Month Button -->
+      <button 
+        type="button" 
+        (click)="nextMonth()" 
+        class="soft-btn !w-10 !h-10 !p-1 !rounded-xl" 
+        matTooltip="Next Month">
+        <mat-icon class="!w-5 !h-5 !text-[20px]">chevron_right</mat-icon>
+      </button>
+
+      <!-- Today Quick Jump -->
+      <button 
+        type="button" 
+        (click)="goToToday()" 
+        class="soft-btn !h-10 !px-3.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+        Today
+      </button>
+
+      <!-- Add Holiday Action (Admin only) -->
+      <button 
+        *ngIf="isAdmin()" 
+        type="button" 
+        (click)="openAddModal()" 
+        class="soft-btn-primary !h-10 !px-4 text-xs font-bold">
+        <mat-icon class="mr-1 !w-4 !h-4 !text-[18px]">add</mat-icon>
+        Add Holiday
+      </button>
+    </div>
+  </div>
+
+  <!-- Month Summary Banner -->
+  <div class="surface !p-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0 shadow-soft-surface-sm">
+        <mat-icon class="!w-5 !h-5 !text-[20px]">celebration</mat-icon>
+      </div>
+      <div>
+        <span class="font-extrabold text-[#1F2937] dark:text-[#f8fafc] text-sm sm:text-base">
+          {{ selectedMonthName() }} {{ selectedYear() }}
+        </span>
+        <span class="text-xs text-[#4B5563] dark:text-[#94a3b8] block sm:inline sm:ml-2">
+          Click any holiday dot on the calendar to view its event details.
+        </span>
+      </div>
     </div>
 
-    <div *ngIf="filteredHolidays().length > 0; else noHolidays" class="divide-y divide-slate-100">
-      <div *ngFor="let h of filteredHolidays()" class="py-3.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-xl transition-colors">
-        <div class="flex items-center gap-4">
-          <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-            <mat-icon class="!w-5 !h-5 !text-[20px]">celebration</mat-icon>
-          </div>
-          <div>
-            <div class="font-bold text-slate-900 text-sm">{{ h.name }}</div>
-            <div class="text-xs text-slate-500">{{ h.date | date:'fullDate' }}</div>
+    <div class="flex items-center gap-2">
+      <span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/80 shadow-soft-surface-sm">
+        {{ monthHolidays().length }} Holiday{{ monthHolidays().length === 1 ? '' : 's' }} in {{ selectedMonthName() }}
+      </span>
+      <span class="px-3 py-1 rounded-full text-xs font-bold bg-soft-bg text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-800 shadow-soft-surface-sm">
+        {{ yearHolidays().length }} Total in {{ selectedYear() }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Main Calendar Month Grid -->
+  <div class="surface !p-6 sm:!p-8">
+    <!-- Days of Week Header -->
+    <div class="grid grid-cols-7 gap-2 sm:gap-3 mb-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+      <div>Sun</div>
+      <div>Mon</div>
+      <div>Tue</div>
+      <div>Wed</div>
+      <div>Thu</div>
+      <div>Fri</div>
+      <div>Sat</div>
+    </div>
+
+    <!-- Calendar Day Cells -->
+    <div class="grid grid-cols-7 gap-2 sm:gap-3">
+      <div *ngFor="let day of calendarDays()" 
+           (click)="onDayClick(day)"
+           class="calendar-tile min-h-[95px] sm:min-h-[115px] rounded-2xl border p-2.5 flex flex-col justify-between transition-all select-none"
+           [ngClass]="{
+             'invisible pointer-events-none': !day.isCurrentMonth,
+             'cursor-pointer hover:shadow-soft-well-sm': day.isCurrentMonth,
+             'bg-purple-50/70 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 shadow-soft-surface-sm ring-1 ring-purple-200/50': day.isHoliday,
+             'bg-slate-100/50 dark:bg-slate-800/40 border-slate-200/50': day.isWeekend && !day.isHoliday,
+             'ring-2 ring-blue-500 shadow-soft-well-sm': day.isToday && !day.isHoliday,
+             'bg-soft-bg border-slate-200/60 dark:border-slate-800': day.isCurrentMonth && !day.isHoliday && !day.isWeekend
+           }"
+           [matTooltip]="day.isHoliday ? ('🎉 Holiday: ' + day.holidayName + ' (Click to view)') : (day.isCurrentMonth ? 'Click to view day' : '')">
+        
+        <!-- Day Number & Today/Holiday Indicators -->
+        <div class="flex items-center justify-between">
+          <span class="text-xs sm:text-sm font-extrabold" 
+                [ngClass]="{
+                  'text-purple-700 dark:text-purple-300 font-black': day.isHoliday,
+                  'text-blue-600 dark:text-blue-400': day.isToday && !day.isHoliday,
+                  'text-[#1F2937] dark:text-[#f8fafc]': !day.isHoliday && !day.isToday
+                }">
+            {{ day.dayNumber }}
+          </span>
+
+          <span *ngIf="day.isToday" class="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+            Today
+          </span>
+          <span *ngIf="day.isHoliday" class="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200 shadow-soft-surface-sm">
+            Holiday
+          </span>
+        </div>
+
+        <!-- Center: Glowing Holiday Dot & Name -->
+        <div class="flex-1 flex flex-col items-center justify-center my-1.5">
+          <div *ngIf="day.isHoliday" class="flex flex-col items-center gap-1.5 w-full">
+            <!-- Pulsing Event Dot -->
+            <div class="flex items-center justify-center">
+              <span class="w-3 h-3 rounded-full bg-purple-600 dark:bg-purple-400 ring-4 ring-purple-100 dark:ring-purple-950/70 shadow-sm animate-pulse"></span>
+            </div>
+
+            <!-- Event preview badge for tablet/desktop -->
+            <span class="hidden sm:block text-[11px] font-bold text-purple-800 dark:text-purple-200 truncate max-w-full text-center px-2 py-0.5 rounded-lg bg-purple-100/90 dark:bg-purple-900/50 shadow-soft-surface-sm">
+              {{ day.holidayName }}
+            </span>
           </div>
         </div>
 
+        <!-- Bottom Status line -->
+        <div class="text-[10px] text-center font-semibold">
+          <span *ngIf="day.isHoliday" class="text-purple-600 dark:text-purple-400 sm:hidden">
+            🎉 Event
+          </span>
+          <span *ngIf="!day.isHoliday && day.isWeekend" class="text-slate-400">
+            Weekend
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 1: Holiday Event Details Popup (Triggered on Dot/Day Click) -->
+<div *ngIf="showEventModal()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+  <div class="surface !p-6 sm:!p-8 max-w-md w-full shadow-soft-surface-lg space-y-5 animate-in fade-in zoom-in-95">
+    <!-- Header -->
+    <div class="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-soft-surface-sm"
+             [ngClass]="selectedDay()?.isHoliday ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300' : 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'">
+          <mat-icon class="!w-5 !h-5 !text-[20px]">{{ selectedDay()?.isHoliday ? 'celebration' : 'event_note' }}</mat-icon>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-[#1F2937] dark:text-[#f8fafc]">
+            {{ selectedDay()?.isHoliday ? 'Holiday Event' : 'Day Overview' }}
+          </h3>
+          <p class="text-xs text-slate-400">{{ selectedDay()?.dateStr | date:'fullDate' }}</p>
+        </div>
+      </div>
+
+      <button mat-icon-button (click)="closeEventModal()" class="soft-btn !w-8 !h-8 !p-1 !rounded-full">
+        <mat-icon class="!w-4 !h-4 !text-[18px]">close</mat-icon>
+      </button>
+    </div>
+
+    <!-- Content for Holiday Day -->
+    <div *ngIf="selectedDay()?.isHoliday" class="space-y-4">
+      <div class="p-4 rounded-2xl bg-purple-50/80 dark:bg-purple-950/50 border border-purple-200/80 dark:border-purple-800/60 space-y-2">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-purple-600 animate-pulse"></span>
+          <span class="text-xs font-bold uppercase tracking-wider text-purple-800 dark:text-purple-300">Company Holiday</span>
+        </div>
+        <div class="text-2xl font-black text-purple-950 dark:text-purple-100 tracking-tight">
+          {{ selectedDay()?.holidayName }}
+        </div>
+        <div class="text-xs text-purple-800/80 dark:text-purple-300/80 flex items-center gap-1.5">
+          <mat-icon class="!w-4 !h-4 !text-[16px]">calendar_today</mat-icon>
+          <span>{{ selectedDay()?.dateStr | date:'fullDate' }}</span>
+        </div>
+      </div>
+
+      <div class="space-y-2 text-xs text-[#4B5563] dark:text-[#94a3b8] bg-soft-bg p-3.5 rounded-xl border border-slate-200/50 dark:border-slate-800">
+        <div class="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-semibold">
+          <mat-icon class="!w-4 !h-4 !text-[16px] text-emerald-600">verified</mat-icon>
+          <span>Paid Non-Working Day</span>
+        </div>
+        <p class="text-[11px] leading-relaxed">
+          Employees are not required to punch in on this date. This holiday is automatically excluded from leave calculations and will not deduct from unified leave balances.
+        </p>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-2">
         <button 
-          mat-icon-button 
-          color="warn" 
-          [disabled]="deletingId() === h.date"
-          (click)="deleteHoliday(h.date, h.name)" 
-          matTooltip="Delete Holiday">
-          <mat-spinner *ngIf="deletingId() === h.date" diameter="16"></mat-spinner>
-          <mat-icon *ngIf="deletingId() !== h.date">delete_outline</mat-icon>
+          *ngIf="isAdmin()" 
+          type="button" 
+          [disabled]="deletingId() === selectedDay()?.dateStr"
+          (click)="deleteHoliday(selectedDay()!.dateStr, selectedDay()!.holidayName!)" 
+          class="soft-btn !py-2 !px-4 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 flex items-center gap-1.5">
+          <mat-spinner *ngIf="deletingId() === selectedDay()?.dateStr" diameter="14"></mat-spinner>
+          <mat-icon *ngIf="deletingId() !== selectedDay()?.dateStr" class="!w-4 !h-4 !text-[16px]">delete</mat-icon>
+          <span>Delete Holiday</span>
+        </button>
+
+        <button type="button" (click)="closeEventModal()" class="soft-btn-primary !h-10 !px-5 text-xs font-bold">
+          Close
         </button>
       </div>
     </div>
 
-    <ng-template #noHolidays>
-      <div class="py-10 text-center space-y-3">
-        <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-          <mat-icon>calendar_today</mat-icon>
+    <!-- Content for Non-Holiday Day -->
+    <div *ngIf="!selectedDay()?.isHoliday" class="space-y-4">
+      <div class="p-4 rounded-2xl bg-soft-bg border border-slate-200/60 dark:border-slate-800 space-y-2">
+        <div class="text-base font-bold text-[#1F2937] dark:text-[#f8fafc]">
+          Regular Day
         </div>
-        <div class="text-slate-800 font-semibold">No holidays listed for {{ selectedYear() }}</div>
-        <p class="text-xs text-slate-500 max-w-sm mx-auto">
-          Add holidays manually above, or click "Seed Standard Holidays" to populate national holidays.
+        <p class="text-xs text-[#4B5563] dark:text-[#94a3b8]">
+          No official company holiday is scheduled for this date.
         </p>
       </div>
-    </ng-template>
+
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button type="button" (click)="closeEventModal()" class="soft-btn !py-2 !px-4 text-xs font-semibold text-slate-600">
+          Close
+        </button>
+
+        <button 
+          *ngIf="isAdmin()" 
+          type="button" 
+          (click)="scheduleFromEventModal()" 
+          class="soft-btn-primary !h-10 !px-5 text-xs font-bold">
+          <mat-icon class="mr-1 !w-4 !h-4 !text-[16px]">add</mat-icon>
+          Add Holiday Here
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 2: Add New Holiday -->
+<div *ngIf="showAddModal()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+  <div class="surface !p-6 sm:!p-8 max-w-md w-full shadow-soft-surface-lg space-y-5 animate-in fade-in zoom-in-95">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800">
+      <div>
+        <h3 class="text-lg font-bold text-[#1F2937] dark:text-[#f8fafc]">Add New Holiday</h3>
+        <p class="text-xs text-slate-400">Specify holiday date and description</p>
+      </div>
+      <button mat-icon-button (click)="closeAddModal()" class="soft-btn !w-8 !h-8 !p-1 !rounded-full">
+        <mat-icon class="!w-4 !h-4 !text-[18px]">close</mat-icon>
+      </button>
+    </div>
+
+    <form [formGroup]="holidayForm" (ngSubmit)="addHoliday()" class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Date</label>
+        <mat-form-field appearance="outline" class="w-full">
+          <input matInput type="date" formControlName="date">
+          <mat-error *ngIf="holidayForm.get('date')?.hasError('required')">Date is required</mat-error>
+        </mat-form-field>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Holiday Name</label>
+        <mat-form-field appearance="outline" class="w-full">
+          <input matInput formControlName="name" placeholder="e.g. Diwali, Republic Day, Christmas...">
+          <mat-error *ngIf="holidayForm.get('name')?.hasError('required')">Name is required</mat-error>
+          <mat-error *ngIf="holidayForm.get('name')?.hasError('minlength')">Minimum 2 characters required</mat-error>
+        </mat-form-field>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button type="button" (click)="closeAddModal()" class="soft-btn !py-2 !px-4 text-xs font-semibold text-slate-600">
+          Cancel
+        </button>
+        <button 
+          type="submit" 
+          [disabled]="holidayForm.invalid || isAdding()"
+          class="soft-btn-primary !h-11 !px-6 text-xs font-bold">
+          <mat-spinner *ngIf="isAdding()" diameter="18" class="mr-2 !text-white"></mat-spinner>
+          <span>{{ isAdding() ? 'Adding...' : 'Save Holiday' }}</span>
+        </button>
+      </div>
+    </form>
   </div>
 </div>

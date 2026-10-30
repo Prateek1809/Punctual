@@ -1,6 +1,6 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -84,7 +84,10 @@ export class MyAttendanceComponent {
     { value: 12, name: 'December' },
   ];
 
-  // Holidays
+  // Holidays & Settings
+  settings$ = this.settingsService.getSettings();
+  settings = toSignal(this.settings$, { initialValue: null });
+
   holidays$ = this.settingsService.getHolidays();
   holidays = toSignal(this.holidays$, { initialValue: [] });
   holidaysMap = computed(() => new Map(this.holidays().map(h => [h.date, h.name])));
@@ -140,9 +143,26 @@ export class MyAttendanceComponent {
   // Regularization Form
   regForm = this.fb.group({
     date: ['', Validators.required],
-    requestedIn: ['10:10', Validators.required],
-    requestedOut: ['19:30', Validators.required],
+    requestedIn: ['', Validators.required],
+    requestedOut: ['', Validators.required],
     reason: ['', [Validators.required, Validators.minLength(5)]]
+  }, {
+    validators: (group: AbstractControl): ValidationErrors | null => {
+      const inTime = group.get('requestedIn')?.value;
+      const outTime = group.get('requestedOut')?.value;
+      if (!inTime || !outTime) return null;
+      if (inTime >= outTime) {
+        group.get('requestedOut')?.setErrors({ endBeforeStart: true });
+        return { timeOrder: true };
+      } else {
+        if (group.get('requestedOut')?.hasError('endBeforeStart')) {
+          const errors = { ...group.get('requestedOut')?.errors };
+          delete errors['endBeforeStart'];
+          group.get('requestedOut')?.setErrors(Object.keys(errors).length ? errors : null);
+        }
+      }
+      return null;
+    }
   });
 
   // Calendar Heatmap Days Generation
@@ -286,8 +306,12 @@ export class MyAttendanceComponent {
   }
 
   openRegularizationModal(defaultDate?: string) {
+    const inTime = this.settings()?.officeStart || '';
+    const outTime = this.settings()?.officeEnd || '';
     if (defaultDate) {
-      this.regForm.patchValue({ date: defaultDate });
+      this.regForm.patchValue({ date: defaultDate, requestedIn: inTime, requestedOut: outTime });
+    } else {
+      this.regForm.patchValue({ requestedIn: inTime, requestedOut: outTime });
     }
     this.showRegularizationModal.set(true);
   }
@@ -297,7 +321,12 @@ export class MyAttendanceComponent {
   }
 
   async submitRegularization() {
-    if (this.regForm.invalid || this.isSubmittingReg()) return;
+    if (this.regForm.invalid || this.isSubmittingReg()) {
+      if (this.regForm.get('requestedOut')?.hasError('endBeforeStart')) {
+        this.snackBar.open('Check-out time must be after check-in time.', 'Close', { duration: 3500 });
+      }
+      return;
+    }
 
     this.isSubmittingReg.set(true);
     try {
@@ -307,7 +336,9 @@ export class MyAttendanceComponent {
         duration: 4000
       });
       this.showRegularizationModal.set(false);
-      this.regForm.reset({ requestedIn: '10:10', requestedOut: '19:30' });
+      const inTime = this.settings()?.officeStart || '';
+      const outTime = this.settings()?.officeEnd || '';
+      this.regForm.reset({ requestedIn: inTime, requestedOut: outTime });
     } catch (e: any) {
       this.snackBar.open(e.message || 'Error submitting regularization', 'Close', { duration: 4000 });
     } finally {

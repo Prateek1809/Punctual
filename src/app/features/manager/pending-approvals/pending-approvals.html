@@ -2,35 +2,35 @@
   <!-- Header -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Pending Approvals</h2>
-      <p class="text-slate-500 text-sm mt-0.5">
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-[#1F2937] dark:text-[#f8fafc] tracking-tight">Pending Approvals</h2>
+      <p class="text-[#4B5563] dark:text-[#94a3b8] text-sm mt-0.5">
         Review and decide on team leave applications and attendance regularizations.
       </p>
     </div>
 
     <!-- Counters -->
-    <div class="flex items-center gap-2 self-start sm:self-auto">
-      <span class="px-3 py-1.5 rounded-2xl bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
+    <div class="flex items-center gap-2.5 self-start sm:self-auto">
+      <span class="px-3.5 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-[#C2410C] dark:text-amber-400 border border-amber-200 shadow-soft-surface-sm text-xs font-bold">
         {{ pendingLeaves().length }} Leave Request{{ pendingLeaves().length === 1 ? '' : 's' }}
       </span>
-      <span class="px-3 py-1.5 rounded-2xl bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold">
+      <span class="px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-200 shadow-soft-surface-sm text-xs font-bold">
         {{ pendingRegs().length }} Regularization{{ pendingRegs().length === 1 ? '' : 's' }}
       </span>
     </div>
   </div>
 
   <!-- Tabs Card -->
-  <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-    <!-- Tab Navigation -->
-    <div class="border-b border-slate-100 flex items-center px-6 pt-2">
+  <div class="surface !p-0 overflow-hidden">
+    <!-- Soft Segmented Tab Navigation -->
+    <div class="p-2 mx-6 mt-5 rounded-2xl bg-soft-bg shadow-soft-well-sm border border-slate-200/50 dark:border-slate-800 flex items-center gap-1 max-w-lg">
       <button 
         type="button" 
         (click)="selectedTab.set(0)"
-        class="pb-3 px-4 text-sm font-semibold border-b-2 transition-all flex items-center gap-2"
-        [ngClass]="selectedTab() === 0 ? 'border-amber-600 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-800'">
+        class="flex-1 py-2 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2"
+        [ngClass]="selectedTab() === 0 ? 'bg-soft-bg shadow-soft-surface-sm text-blue-600 dark:text-blue-400 border border-slate-200/60 dark:border-slate-700' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'">
         <mat-icon class="!w-4 !h-4 !text-[18px]">beach_access</mat-icon>
         Leave Requests
-        <span *ngIf="pendingLeaves().length > 0" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white">
+        <span *ngIf="pendingLeaves().length > 0" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white shadow-soft-surface-sm">
           {{ pendingLeaves().length }}
         </span>
       </button>
@@ -38,11 +38,11 @@
       <button 
         type="button" 
         (click)="selectedTab.set(1)"
-        class="pb-3 px-4 text-sm font-semibold border-b-2 transition-all flex items-center gap-2"
-        [ngClass]="selectedTab() === 1 ? 'border-amber-600 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-800'">
+        class="flex-1 py-2 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2"
+        [ngClass]="selectedTab() === 1 ? 'bg-soft-bg shadow-soft-surface-sm text-blue-600 dark:text-blue-400 border border-slate-200/60 dark:border-slate-700' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'">
         <mat-icon class="!w-4 !h-4 !text-[18px]">edit_calendar</mat-icon>
-        Attendance Regularizations
-        <span *ngIf="pendingRegs().length > 0" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-600 text-white">
+        Regularizations
+        <span *ngIf="pendingRegs().length > 0" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600 text-white shadow-soft-surface-sm">
           {{ pendingRegs().length }}
         </span>
       </button>
@@ -51,23 +51,23 @@
     <!-- TAB 1: Leave Requests -->
     <div *ngIf="selectedTab() === 0" class="p-6">
       <div *ngIf="pendingLeaves().length > 0; else noPendingLeaves" class="space-y-4">
-        <div *ngFor="let leave of pendingLeaves()" class="bg-slate-50 rounded-2xl p-5 border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-md transition-shadow">
+        <div *ngFor="let leave of pendingLeaves()" class="surface !p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-soft-surface-lg transition-all">
           <!-- Left: User details & Leave info -->
           <div class="flex items-start gap-4">
-            <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-md shadow-indigo-100">
+            <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-soft-surface-sm">
               {{ getUserInitials(leave.uid, leave.userName) }}
             </div>
             <div class="space-y-1">
               <div class="flex items-center gap-2">
-                <span class="text-base font-bold text-slate-900">{{ getUserName(leave.uid, leave.userName) }}</span>
-                <span *ngIf="leave.isHalfDay" class="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800">Half Day</span>
+                <span class="text-base font-bold text-[#1F2937] dark:text-[#f8fafc]">{{ getUserName(leave.uid, leave.userName) }}</span>
+                <span *ngIf="leave.isHalfDay" class="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 shadow-soft-surface-sm">Half Day</span>
               </div>
-              <div class="text-sm font-semibold text-indigo-600">
+              <div class="text-sm font-semibold text-blue-600 dark:text-blue-400">
                 {{ leave.startDate | date:'mediumDate' }} &rarr; {{ leave.endDate | date:'mediumDate' }}
                 <span class="text-slate-400 font-normal">({{ leave.days }} working day{{ leave.days === 1 ? '' : 's' }})</span>
               </div>
-              <p class="text-xs text-slate-600 max-w-xl">
-                <span class="font-semibold text-slate-700">Reason:</span> {{ leave.reason }}
+              <p class="text-xs text-[#4B5563] dark:text-[#94a3b8] max-w-xl">
+                <span class="font-semibold text-slate-700 dark:text-slate-300">Reason:</span> {{ leave.reason }}
               </p>
               <div class="text-[11px] text-slate-400">
                 Applied on {{ leave.createdAt | date:'medium' }}
@@ -78,23 +78,21 @@
           <!-- Right: Action Buttons -->
           <div class="flex items-center gap-2.5 self-end md:self-auto shrink-0">
             <button 
-              mat-button 
-              color="warn" 
-              class="!rounded-xl"
+              type="button" 
+              class="soft-btn !py-2 !px-4 text-xs font-semibold text-rose-600"
               [disabled]="processingId() === leave.id"
               (click)="promptAction(leave.id, 'leave', 'reject', getUserName(leave.uid, leave.userName))">
-              <mat-icon class="mr-1">close</mat-icon>
+              <mat-icon class="mr-1 !w-4 !h-4 !text-[16px]">close</mat-icon>
               Reject
             </button>
 
             <button 
-              mat-flat-button 
-              color="primary" 
-              class="!rounded-xl !bg-emerald-600 hover:!bg-emerald-700"
+              type="button" 
+              class="soft-btn-primary !py-2 !px-5 text-xs font-bold !bg-emerald-600 hover:!bg-emerald-700 shadow-emerald-200"
               [disabled]="processingId() === leave.id"
               (click)="promptAction(leave.id, 'leave', 'approve', getUserName(leave.uid, leave.userName))">
-              <mat-spinner *ngIf="processingId() === leave.id" diameter="18" class="mr-1"></mat-spinner>
-              <mat-icon *ngIf="processingId() !== leave.id" class="mr-1">check</mat-icon>
+              <mat-spinner *ngIf="processingId() === leave.id" diameter="16" class="mr-1 !text-white"></mat-spinner>
+              <mat-icon *ngIf="processingId() !== leave.id" class="mr-1 !w-4 !h-4 !text-[16px]">check</mat-icon>
               Approve
             </button>
           </div>
@@ -103,11 +101,11 @@
 
       <ng-template #noPendingLeaves>
         <div class="py-12 text-center space-y-3">
-          <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+          <div class="w-12 h-12 rounded-full bg-soft-bg shadow-soft-well-sm text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto border border-slate-200/50 dark:border-slate-800">
             <mat-icon>done_all</mat-icon>
           </div>
-          <div class="text-slate-800 font-semibold">All caught up!</div>
-          <p class="text-xs text-slate-500 max-w-sm mx-auto">
+          <div class="text-[#1F2937] dark:text-[#f8fafc] font-bold">All caught up!</div>
+          <p class="text-xs text-[#4B5563] dark:text-[#94a3b8] max-w-sm mx-auto">
             There are currently no pending leave requests awaiting approval.
           </p>
         </div>
@@ -117,44 +115,42 @@
     <!-- TAB 2: Attendance Regularizations -->
     <div *ngIf="selectedTab() === 1" class="p-6">
       <div *ngIf="pendingRegs().length > 0; else noPendingRegs" class="space-y-4">
-        <div *ngFor="let reg of pendingRegs()" class="bg-slate-50 rounded-2xl p-5 border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-md transition-shadow">
+        <div *ngFor="let reg of pendingRegs()" class="surface !p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-soft-surface-lg transition-all">
           <div class="flex items-start gap-4">
-            <div class="w-12 h-12 rounded-2xl bg-teal-600 text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-md shadow-teal-100">
+            <div class="w-12 h-12 rounded-2xl bg-teal-600 text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-soft-surface-sm">
               {{ getUserInitials(reg.uid, reg.userName) }}
             </div>
             <div class="space-y-1">
-              <span class="text-base font-bold text-slate-900">{{ getUserName(reg.uid, reg.userName) }}</span>
-              <div class="text-sm font-semibold text-teal-700">
+              <span class="text-base font-bold text-[#1F2937] dark:text-[#f8fafc]">{{ getUserName(reg.uid, reg.userName) }}</span>
+              <div class="text-sm font-semibold text-teal-700 dark:text-teal-400">
                 Missed Date: {{ reg.date | date:'fullDate' }}
               </div>
-              <div class="text-xs text-slate-700 font-medium">
+              <div class="text-xs text-[#4B5563] dark:text-[#94a3b8] font-medium">
                 Requested Timing: {{ reg.requestedIn }} &rarr; {{ reg.requestedOut }}
               </div>
-              <p class="text-xs text-slate-600 max-w-xl">
-                <span class="font-semibold text-slate-700">Reason:</span> {{ reg.reason }}
+              <p class="text-xs text-[#4B5563] dark:text-[#94a3b8] max-w-xl">
+                <span class="font-semibold text-slate-700 dark:text-slate-300">Reason:</span> {{ reg.reason }}
               </p>
             </div>
           </div>
 
           <div class="flex items-center gap-2.5 self-end md:self-auto shrink-0">
             <button 
-              mat-button 
-              color="warn" 
-              class="!rounded-xl"
+              type="button" 
+              class="soft-btn !py-2 !px-4 text-xs font-semibold text-rose-600"
               [disabled]="processingId() === reg.id"
               (click)="promptAction(reg.id, 'reg', 'reject', getUserName(reg.uid, reg.userName))">
-              <mat-icon class="mr-1">close</mat-icon>
+              <mat-icon class="mr-1 !w-4 !h-4 !text-[16px]">close</mat-icon>
               Reject
             </button>
 
             <button 
-              mat-flat-button 
-              color="primary" 
-              class="!rounded-xl !bg-teal-600 hover:!bg-teal-700"
+              type="button" 
+              class="soft-btn-primary !py-2 !px-5 text-xs font-bold !bg-teal-600 hover:!bg-teal-700 shadow-teal-200"
               [disabled]="processingId() === reg.id"
               (click)="promptAction(reg.id, 'reg', 'approve', getUserName(reg.uid, reg.userName))">
-              <mat-spinner *ngIf="processingId() === reg.id" diameter="18" class="mr-1"></mat-spinner>
-              <mat-icon *ngIf="processingId() !== reg.id" class="mr-1">check</mat-icon>
+              <mat-spinner *ngIf="processingId() === reg.id" diameter="16" class="mr-1 !text-white"></mat-spinner>
+              <mat-icon *ngIf="processingId() !== reg.id" class="mr-1 !w-4 !h-4 !text-[16px]">check</mat-icon>
               Approve
             </button>
           </div>
@@ -163,11 +159,11 @@
 
       <ng-template #noPendingRegs>
         <div class="py-12 text-center space-y-3">
-          <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+          <div class="w-12 h-12 rounded-full bg-soft-bg shadow-soft-well-sm text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto border border-slate-200/50 dark:border-slate-800">
             <mat-icon>done_all</mat-icon>
           </div>
-          <div class="text-slate-800 font-semibold">No pending regularizations!</div>
-          <p class="text-xs text-slate-500 max-w-sm mx-auto">
+          <div class="text-[#1F2937] dark:text-[#f8fafc] font-bold">No pending regularizations!</div>
+          <p class="text-xs text-[#4B5563] dark:text-[#94a3b8] max-w-sm mx-auto">
             No employees have requested punch regularizations at this time.
           </p>
         </div>
@@ -178,21 +174,21 @@
 
 <!-- Modal Dialog for Manager Comment & Confirmation -->
 <div *ngIf="activeRequest()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-  <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
-    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+  <div class="surface !p-6 sm:!p-8 max-w-md w-full shadow-soft-surface-lg space-y-5 animate-in fade-in zoom-in-95">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800">
       <div>
-        <h3 class="text-lg font-bold text-slate-900 capitalize">
+        <h3 class="text-lg font-bold text-[#1F2937] dark:text-[#f8fafc] capitalize">
           {{ activeRequest()?.action }} {{ activeRequest()?.type === 'leave' ? 'Leave' : 'Regularization' }}
         </h3>
         <p class="text-xs text-slate-400">For {{ activeRequest()?.name }}</p>
       </div>
-      <button mat-icon-button (click)="closeActionDialog()">
-        <mat-icon>close</mat-icon>
+      <button mat-icon-button (click)="closeActionDialog()" class="soft-btn !w-8 !h-8 !p-1 !rounded-full">
+        <mat-icon class="!w-4 !h-4 !text-[18px]">close</mat-icon>
       </button>
     </div>
 
     <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+      <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
         Manager Comment (Optional)
       </label>
       <mat-form-field appearance="outline" class="w-full">
@@ -206,14 +202,14 @@
     </div>
 
     <div class="flex items-center justify-end gap-3 pt-2">
-      <button mat-button type="button" (click)="closeActionDialog()">Cancel</button>
+      <button type="button" (click)="closeActionDialog()" class="soft-btn !py-2 !px-4 text-xs font-semibold text-slate-600">Cancel</button>
       <button 
-        mat-flat-button 
-        [color]="activeRequest()?.action === 'approve' ? 'primary' : 'warn'"
+        type="button"
         [disabled]="processingId() === activeRequest()?.id"
         (click)="confirmAction()"
-        class="!h-11 !px-6 !rounded-xl capitalize">
-        <mat-spinner *ngIf="processingId() === activeRequest()?.id" diameter="18" class="mr-2"></mat-spinner>
+        class="soft-btn-primary !h-11 !px-6 text-xs font-bold capitalize"
+        [ngClass]="activeRequest()?.action === 'approve' ? '!bg-emerald-600' : '!bg-rose-600'">
+        <mat-spinner *ngIf="processingId() === activeRequest()?.id" diameter="18" class="mr-2 !text-white"></mat-spinner>
         <span>Confirm {{ activeRequest()?.action }}</span>
       </button>
     </div>

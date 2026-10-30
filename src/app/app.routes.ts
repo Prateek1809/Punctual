@@ -93,7 +93,7 @@ export const routes: Routes = [
           import('./features/admin/employees/employees.component').then(
             m => m.EmployeesComponent
           ),
-        data: { role: 'admin' },
+        data: { role: 'manager' },
       },
       {
         path: 'admin/add-employee',

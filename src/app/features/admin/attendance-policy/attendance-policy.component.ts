@@ -43,7 +43,7 @@ export class AttendancePolicyComponent implements OnInit, AfterViewInit, OnDestr
   isLoadingLocation = signal(false);
   isFetchingIp = signal(false);
 
-  allowedIps = signal<string[]>(['127.0.0.1']);
+  allowedIps = signal<string[]>([]);
   newIpInput = signal('');
 
   // Leaflet map instances
@@ -55,26 +55,36 @@ export class AttendancePolicyComponent implements OnInit, AfterViewInit, OnDestr
     mode: ['either' as AttendancePolicyMode, Validators.required],
     onFailure: ['flag' as AttendanceOnFailure, Validators.required],
     maxAccuracyM: [300, [Validators.required, Validators.min(10)]],
-    officeName: ['Head Office', Validators.required],
-    officeLat: [19.0760, Validators.required],
-    officeLng: [72.8777, Validators.required],
-    radiusM: [200, [Validators.required, Validators.min(20)]]
+    officeName: ['', Validators.required],
+    officeLat: [null as number | null, Validators.required],
+    officeLng: [null as number | null, Validators.required],
+    radiusM: [200, [Validators.required, Validators.min(10)]]
   });
 
   ngOnInit() {
     this.settingsService.getSettings().subscribe(settings => {
-      const p = settings.attendancePolicy || DEFAULT_SETTINGS.attendancePolicy;
-      const office = p.offices?.[0] || DEFAULT_SETTINGS.attendancePolicy.offices[0];
+      const p = settings.attendancePolicy || { mode: 'either', onFailure: 'flag', maxAccuracyM: 300, allowedIps: [], offices: [] };
+      const office = p.offices?.[0];
 
-      this.policyForm.patchValue({
-        mode: p.mode,
-        onFailure: p.onFailure,
-        maxAccuracyM: p.maxAccuracyM || 300,
-        officeName: office.name,
-        officeLat: office.lat,
-        officeLng: office.lng,
-        radiusM: office.radiusM
-      });
+      if (office && office.lat != null && office.lng != null) {
+        this.policyForm.patchValue({
+          mode: p.mode || 'either',
+          onFailure: p.onFailure || 'flag',
+          maxAccuracyM: p.maxAccuracyM || 300,
+          officeName: office.name || '',
+          officeLat: office.lat,
+          officeLng: office.lng,
+          radiusM: office.radiusM || 200
+        });
+      } else {
+        this.policyForm.patchValue({
+          mode: p.mode || 'either',
+          onFailure: p.onFailure || 'flag',
+          maxAccuracyM: p.maxAccuracyM || 300,
+          officeName: office?.name || '',
+          radiusM: office?.radiusM || 200
+        });
+      }
 
       this.allowedIps.set(p.allowedIps || []);
       this.updateMapLayers();
@@ -102,8 +112,13 @@ export class AttendancePolicyComponent implements OnInit, AfterViewInit, OnDestr
     const mapElement = document.getElementById('policy-map');
     if (!mapElement || this.map) return;
 
-    const lat = Number(this.policyForm.get('officeLat')?.value) || 19.0760;
-    const lng = Number(this.policyForm.get('officeLng')?.value) || 72.8777;
+    const latVal = this.policyForm.get('officeLat')?.value;
+    const lngVal = this.policyForm.get('officeLng')?.value;
+    const hasCoords = latVal != null && lngVal != null && !isNaN(Number(latVal)) && !isNaN(Number(lngVal));
+
+    const defaultLat = hasCoords ? Number(latVal) : 20.5937;
+    const defaultLng = hasCoords ? Number(lngVal) : 78.9629;
+    const zoomLevel = hasCoords ? 16 : 5;
 
     // Create custom pin icon
     const defaultIcon = L.icon({
@@ -116,32 +131,34 @@ export class AttendancePolicyComponent implements OnInit, AfterViewInit, OnDestr
       shadowSize: [41, 41]
     });
 
-    this.map = L.map('policy-map').setView([lat, lng], 16);
+    this.map = L.map('policy-map').setView([defaultLat, defaultLng], zoomLevel);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(this.map);
 
-    this.marker = L.marker([lat, lng], { draggable: true, icon: defaultIcon }).addTo(this.map);
-    this.circle = L.circle([lat, lng], {
-      radius: Number(this.policyForm.get('radiusM')?.value) || 200,
-      color: '#4f46e5',
-      fillColor: '#6366f1',
-      fillOpacity: 0.2
-    }).addTo(this.map);
+    if (hasCoords) {
+      this.marker = L.marker([defaultLat, defaultLng], { draggable: true, icon: defaultIcon }).addTo(this.map);
+      this.circle = L.circle([defaultLat, defaultLng], {
+        radius: Number(this.policyForm.get('radiusM')?.value) || 200,
+        color: '#4f46e5',
+        fillColor: '#6366f1',
+        fillOpacity: 0.2
+      }).addTo(this.map);
 
-    // Drag marker updates lat & lng
-    this.marker.on('dragend', () => {
-      const pos = this.marker!.getLatLng();
-      this.policyForm.patchValue({
-        officeLat: Number(pos.lat.toFixed(6)),
-        officeLng: Number(pos.lng.toFixed(6))
+      // Drag marker updates lat & lng
+      this.marker.on('dragend', () => {
+        const pos = this.marker!.getLatLng();
+        this.policyForm.patchValue({
+          officeLat: Number(pos.lat.toFixed(6)),
+          officeLng: Number(pos.lng.toFixed(6))
+        });
+        this.updateMapLayers();
       });
-      this.updateMapLayers();
-    });
+    }
 
-    // Clicking map moves marker
+    // Clicking map places or moves marker
     this.map.on('click', (e: L.LeafletMouseEvent) => {
       this.policyForm.patchValue({
         officeLat: Number(e.latlng.lat.toFixed(6)),
@@ -152,17 +169,52 @@ export class AttendancePolicyComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   private updateMapLayers() {
-    if (!this.map || !this.marker || !this.circle) return;
+    if (!this.map) return;
 
-    const lat = Number(this.policyForm.get('officeLat')?.value);
-    const lng = Number(this.policyForm.get('officeLng')?.value);
+    const latVal = this.policyForm.get('officeLat')?.value;
+    const lngVal = this.policyForm.get('officeLng')?.value;
+    if (latVal == null || lngVal == null) return;
+
+    const lat = Number(latVal);
+    const lng = Number(lngVal);
     const radius = Number(this.policyForm.get('radiusM')?.value) || 200;
 
-    if (!isNaN(lat) && !isNaN(lng)) {
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const defaultIcon = L.icon({
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    });
+
+    if (!this.marker) {
+      this.marker = L.marker([lat, lng], { draggable: true, icon: defaultIcon }).addTo(this.map);
+      this.circle = L.circle([lat, lng], {
+        radius,
+        color: '#4f46e5',
+        fillColor: '#6366f1',
+        fillOpacity: 0.2
+      }).addTo(this.map);
+
+      this.marker.on('dragend', () => {
+        const pos = this.marker!.getLatLng();
+        this.policyForm.patchValue({
+          officeLat: Number(pos.lat.toFixed(6)),
+          officeLng: Number(pos.lng.toFixed(6))
+        });
+        this.updateMapLayers();
+      });
+    } else {
       const newLatLng = new L.LatLng(lat, lng);
       this.marker.setLatLng(newLatLng);
-      this.circle.setLatLng(newLatLng);
-      this.circle.setRadius(radius);
+      if (this.circle) {
+        this.circle.setLatLng(newLatLng);
+        this.circle.setRadius(radius);
+      }
     }
   }
 

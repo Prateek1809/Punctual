@@ -14,6 +14,7 @@ import { Firestore, collection, collectionData } from '@angular/fire/firestore';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UserProfile, UserRole } from '../../../core/models';
+import { AuthService } from '../../../core/auth.service';
 import { Observable } from 'rxjs';
 
 @Component({
@@ -39,9 +40,16 @@ export class EmployeesComponent {
   private firestore = inject(Firestore);
   private functions = inject(Functions);
   private snackBar = inject(MatSnackBar);
+  public auth = inject(AuthService);
 
   searchQuery = signal('');
   roleFilter = signal<string>('all');
+  statusFilter = signal<string>('all');
+
+  currentUid = computed(() => this.auth.user()?.uid);
+  currentUserRole = computed(() => this.auth.currentRole() || this.auth.userProfile()?.role || 'employee');
+  isAdmin = computed(() => this.currentUserRole() === 'admin');
+  isManager = computed(() => this.currentUserRole() === 'manager');
 
   showAddModal = signal(false);
   isCreating = signal(false);
@@ -59,17 +67,40 @@ export class EmployeesComponent {
     return this.users().filter(u => u.role === 'manager' || u.role === 'admin');
   });
 
-  // Filtered Users
+  // Filtered Users:
+  // - Admin ko Manager aur Employees dikhenge (Admin accounts & khud excluded)
+  // - Manager ko Admin aur vo khud nahi dikhenge (sirf Employees dikhenge)
   filteredUsers = computed(() => {
     const q = this.searchQuery().toLowerCase().trim();
+    const status = this.statusFilter();
     const role = this.roleFilter();
+    const myUid = this.currentUid();
+    const myRole = this.currentUserRole();
 
-    return this.users().filter(u => {
-      const matchesSearch =
-        !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
-      const matchesRole = role === 'all' || u.role === role;
-      return matchesSearch && matchesRole;
-    });
+    return this.users()
+      .filter(u => {
+        // Khud ko kabhi nahi dikhana
+        if (u.uid === myUid) return false;
+
+        if (myRole === 'admin') {
+          // Admin ko manager aur employees dikhenge (admin accounts excluded)
+          return u.role === 'employee' || u.role === 'manager';
+        } else if (myRole === 'manager') {
+          // Manager ko admin aur khud nahi dikhenge (sirf employees dikhenge)
+          return u.role === 'employee';
+        } else {
+          return u.role === 'employee';
+        }
+      })
+      .filter(u => {
+        const matchesSearch =
+          !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+        const matchesStatus =
+          status === 'all' || (status === 'active' ? u.isActive !== false : u.isActive === false);
+        const matchesRole =
+          role === 'all' || u.role === role;
+        return matchesSearch && matchesStatus && matchesRole;
+      });
   });
 
   // Form for Adding New Employee
@@ -89,7 +120,10 @@ export class EmployeesComponent {
   });
 
   openAddModal() {
-    this.addForm.reset({ role: 'employee', managerId: '' });
+    this.addForm.reset({ 
+      role: 'employee', 
+      managerId: this.isManager() ? (this.currentUid() || '') : '' 
+    });
     this.showAddModal.set(true);
   }
 
@@ -102,8 +136,19 @@ export class EmployeesComponent {
 
     this.isCreating.set(true);
     try {
+      const formVal = this.addForm.value;
+      const payload: any = {
+        name: formVal.name,
+        email: formVal.email,
+        password: formVal.password,
+        role: this.isAdmin() ? (formVal.role || 'employee') : 'employee',
+        managerId: this.isAdmin() 
+          ? (formVal.managerId || null) 
+          : (formVal.managerId || this.currentUid() || null)
+      };
+
       const createFn = httpsCallable(this.functions, 'createEmployee');
-      await createFn(this.addForm.value);
+      await createFn(payload);
       this.snackBar.open('Employee account created successfully!', 'Close', { duration: 4000 });
       this.closeAddModal();
     } catch (e: any) {
@@ -114,6 +159,10 @@ export class EmployeesComponent {
   }
 
   openEditModal(user: UserProfile) {
+    if (this.isManager() && user.role !== 'employee') {
+      this.snackBar.open('Managers can only edit employee profiles.', 'Close', { duration: 3000 });
+      return;
+    }
     this.editingUser.set(user);
     this.editForm.patchValue({
       name: user.name,
@@ -132,11 +181,21 @@ export class EmployeesComponent {
 
     this.isUpdating.set(true);
     try {
-      const updateFn = httpsCallable(this.functions, 'updateEmployee');
-      await updateFn({
+      const formVal = this.editForm.value;
+      const payload: any = {
         uid: u.uid,
-        ...this.editForm.value
-      });
+        name: formVal.name,
+        managerId: formVal.managerId || null
+      };
+
+      if (this.isAdmin()) {
+        payload.role = formVal.role;
+      } else {
+        payload.role = 'employee';
+      }
+
+      const updateFn = httpsCallable(this.functions, 'updateEmployee');
+      await updateFn(payload);
       this.snackBar.open('Employee profile updated!', 'Close', { duration: 3500 });
       this.closeEditModal();
     } catch (e: any) {

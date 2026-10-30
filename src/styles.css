@@ -4,7 +4,423 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom Scrollbars & Utilities */
+/* ======================================================== */
+/* SOFT UI EVOLUTION DESIGN SYSTEM TOKENS                  */
+/* ======================================================== */
+
+:root {
+  /* Primary Soft Colors */
+  --soft-bg: #F0F4F8;
+  --soft-shadow: #D1D9E6;
+  --soft-light: #FFFFFF;
+
+  /* Secondary / Accent Colors */
+  --soft-blue: #2563EB;
+  --soft-green: #22C55E;
+  --soft-orange: #EA580C;
+
+  /* Accessible Text Colors (WCAG AA Compliant) */
+  --soft-text: #1F2937;
+  --soft-muted: #4B5563;
+  --soft-green-text: #15803D;
+  --soft-orange-text: #C2410C;
+
+  /* Dimensions & Transitions */
+  --soft-radius: 1rem;
+  --soft-radius-sm: 0.75rem;
+  --soft-transition: 250ms ease;
+}
+
+/* Dark Mode Tokens */
+html.dark,
+body.dark,
+.dark {
+  --soft-bg: #0f172a;
+  --soft-shadow: #060913;
+  --soft-light: #1e293b;
+
+  --soft-blue: #3b82f6;
+  --soft-green: #34d399;
+  --soft-orange: #fb923c;
+
+  --soft-green-text: #4ade80;
+  --soft-orange-text: #fdba74;
+
+  --soft-text: #f8fafc;
+  --soft-muted: #94a3b8;
+
+  color-scheme: dark;
+}
+
+body {
+  background: var(--soft-bg);
+  color: var(--soft-text);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  transition: background-color var(--soft-transition), color var(--soft-transition);
+}
+
+/* ======================================================== */
+/* CORE SOFT UI SURFACES & WELLS                            */
+/* ======================================================== */
+
+/* Elevated Soft Surface */
+.surface,
+.soft-surface,
+.soft-card {
+  padding: 1.5rem;
+  border-radius: var(--soft-radius);
+  background: var(--soft-bg);
+  border: 1px solid rgba(209, 217, 230, 0.5);
+  box-shadow:
+    -6px -6px 15px var(--soft-light),
+    6px 6px 15px var(--soft-shadow);
+  transition: box-shadow var(--soft-transition), background-color var(--soft-transition), border-color var(--soft-transition);
+}
+
+.dark .surface,
+.dark .soft-surface,
+.dark .soft-card {
+  border-color: rgba(51, 65, 85, 0.45);
+}
+
+/* Compact Soft Surface */
+.surface-sm,
+.soft-surface-sm {
+  padding: 1rem;
+  border-radius: var(--soft-radius-sm);
+  background: var(--soft-bg);
+  border: 1px solid rgba(209, 217, 230, 0.4);
+  box-shadow:
+    -4px -4px 10px var(--soft-light),
+    4px 4px 10px var(--soft-shadow);
+}
+
+.dark .surface-sm,
+.dark .soft-surface-sm {
+  border-color: rgba(51, 65, 85, 0.4);
+}
+
+/* Inset Soft Well (For inputs, filters, secondary containers, and grouped items) */
+.well,
+.soft-well {
+  padding: 1.5rem;
+  border-radius: var(--soft-radius);
+  background: var(--soft-bg);
+  border: 1px solid rgba(209, 217, 230, 0.4);
+  box-shadow:
+    inset -4px -4px 10px var(--soft-light),
+    inset 4px 4px 10px var(--soft-shadow);
+}
+
+.dark .well,
+.dark .soft-well {
+  border-color: rgba(51, 65, 85, 0.35);
+}
+
+/* Compact Inset Soft Well */
+.well-sm,
+.soft-well-sm {
+  padding: 0.65rem 1rem;
+  border-radius: var(--soft-radius-sm);
+  background: var(--soft-bg);
+  border: 1px solid rgba(209, 217, 230, 0.35);
+  box-shadow:
+    inset -2px -2px 6px var(--soft-light),
+    inset 2px 2px 6px var(--soft-shadow);
+}
+
+.dark .well-sm,
+.dark .soft-well-sm {
+  border-color: rgba(51, 65, 85, 0.35);
+}
+
+/* Typography & Stat Colors */
+.muted,
+.soft-muted {
+  color: var(--soft-muted);
+}
+
+.stat--up {
+  color: var(--soft-green-text) !important;
+}
+
+.stat--warn {
+  color: var(--soft-orange-text) !important;
+}
+
+/* Soft Meter / Progress Bar */
+.meter,
+.soft-meter {
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    var(--soft-green) var(--value, 60%),
+    transparent 0
+  );
+  box-shadow:
+    inset 2px 2px 4px var(--soft-shadow),
+    inset -2px -2px 4px var(--soft-light);
+}
+
+/* ======================================================== */
+/* SOFT UI BUTTONS & CONTROLS                               */
+/* ======================================================== */
+
+.button,
+.soft-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid rgba(209, 217, 230, 0.6);
+  border-radius: 12px;
+  background: var(--soft-bg);
+  color: var(--soft-blue);
+  font-weight: 600;
+  box-shadow:
+    -4px -4px 10px var(--soft-light),
+    4px 4px 10px var(--soft-shadow);
+  transition:
+    box-shadow var(--soft-transition),
+    transform var(--soft-transition),
+    background-color var(--soft-transition),
+    color var(--soft-transition);
+  cursor: pointer;
+}
+
+.button:hover,
+.soft-btn:hover {
+  box-shadow:
+    -6px -6px 14px var(--soft-light),
+    6px 6px 14px var(--soft-shadow);
+  transform: translateY(-1px);
+}
+
+.button:active,
+.soft-btn:active {
+  box-shadow:
+    inset -3px -3px 8px var(--soft-light),
+    inset 3px 3px 8px var(--soft-shadow);
+  transform: none;
+}
+
+.button:focus-visible,
+.soft-btn:focus-visible {
+  outline: 3px solid var(--soft-blue);
+  outline-offset: 3px;
+}
+
+.button:disabled,
+.soft-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Soft Primary Action Button */
+.soft-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  background: var(--soft-blue);
+  color: #FFFFFF !important;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    -4px -4px 10px rgba(255, 255, 255, 0.75),
+    4px 4px 12px rgba(37, 99, 235, 0.35);
+  transition:
+    box-shadow var(--soft-transition),
+    transform var(--soft-transition),
+    background-color var(--soft-transition);
+  cursor: pointer;
+}
+
+.soft-btn-primary:hover {
+  box-shadow:
+    -6px -6px 14px rgba(255, 255, 255, 0.9),
+    6px 6px 16px rgba(37, 99, 235, 0.45);
+  transform: translateY(-1px);
+}
+
+.soft-btn-primary:active {
+  box-shadow:
+    inset 3px 3px 8px rgba(0, 0, 0, 0.25),
+    inset -3px -3px 8px rgba(255, 255, 255, 0.15);
+  transform: none;
+}
+
+.soft-btn-primary:focus-visible {
+  outline: 3px solid var(--soft-blue);
+  outline-offset: 3px;
+}
+
+.soft-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.dark .soft-btn-primary {
+  box-shadow:
+    -3px -3px 8px rgba(30, 41, 59, 0.6),
+    3px 3px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Soft Success Button */
+.soft-btn-success {
+  background: var(--soft-green) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    -4px -4px 10px rgba(255, 255, 255, 0.7),
+    4px 4px 12px rgba(34, 197, 94, 0.35);
+}
+
+/* Soft Danger / Warning Button */
+.soft-btn-danger {
+  background: var(--soft-orange) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    -4px -4px 10px rgba(255, 255, 255, 0.7),
+    4px 4px 12px rgba(234, 88, 12, 0.35);
+}
+
+/* Inset Soft Inputs & Form Elements */
+.soft-input,
+input.soft-input,
+select.soft-input,
+textarea.soft-input {
+  background: var(--soft-bg);
+  color: var(--soft-text);
+  border: 1px solid rgba(209, 217, 230, 0.7);
+  border-radius: 12px;
+  padding: 0.65rem 1rem;
+  box-shadow:
+    inset 3px 3px 6px var(--soft-shadow),
+    inset -3px -3px 6px var(--soft-light);
+  transition: box-shadow var(--soft-transition), border-color var(--soft-transition);
+}
+
+.soft-input:focus,
+input.soft-input:focus,
+select.soft-input:focus,
+textarea.soft-input:focus {
+  outline: none;
+  border-color: var(--soft-blue);
+  box-shadow:
+    inset 4px 4px 8px var(--soft-shadow),
+    inset -4px -4px 8px var(--soft-light),
+    0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.dark .soft-input,
+.dark input.soft-input,
+.dark select.soft-input,
+.dark textarea.soft-input {
+  border-color: rgba(51, 65, 85, 0.45);
+}
+
+/* ======================================================== */
+/* MATERIAL UI HARMONIZATION WITH SOFT UI                   */
+/* ======================================================== */
+
+.mat-mdc-card {
+  border-radius: var(--soft-radius) !important;
+  background-color: var(--soft-bg) !important;
+  border: 1px solid rgba(209, 217, 230, 0.5) !important;
+  box-shadow:
+    -6px -6px 15px var(--soft-light),
+    6px 6px 15px var(--soft-shadow) !important;
+  transition: all var(--soft-transition);
+}
+
+.mat-mdc-menu-panel,
+.mdc-dialog__surface,
+.mat-mdc-dialog-container .mdc-dialog__surface {
+  border-radius: var(--soft-radius) !important;
+  background-color: var(--soft-bg) !important;
+  color: var(--soft-text) !important;
+  border: 1px solid rgba(209, 217, 230, 0.6) !important;
+  box-shadow:
+    -8px -8px 20px var(--soft-light),
+    8px 8px 20px var(--soft-shadow) !important;
+}
+
+.dark .mat-mdc-menu-panel,
+.dark .mdc-dialog__surface,
+.dark .mat-mdc-dialog-container .mdc-dialog__surface {
+  border-color: rgba(51, 65, 85, 0.5) !important;
+}
+
+.mat-mdc-snack-bar-container {
+  border-radius: 12px !important;
+  box-shadow:
+    -4px -4px 10px var(--soft-light),
+    4px 4px 14px var(--soft-shadow) !important;
+}
+
+/* Outline Form Field Soft Styling */
+.mat-mdc-form-field-appearance-outline .mdc-notched-outline__leading,
+.mat-mdc-form-field-appearance-outline .mdc-notched-outline__notch,
+.mat-mdc-form-field-appearance-outline .mdc-notched-outline__trailing {
+  border-color: rgba(209, 217, 230, 0.8) !important;
+  border-width: 1.5px !important;
+}
+
+.dark .mat-mdc-form-field-appearance-outline .mdc-notched-outline__leading,
+.dark .mat-mdc-form-field-appearance-outline .mdc-notched-outline__notch,
+.dark .mat-mdc-form-field-appearance-outline .mdc-notched-outline__trailing {
+  border-color: #334155 !important;
+}
+
+.mat-mdc-form-field-appearance-outline.mat-focused .mdc-notched-outline__leading,
+.mat-mdc-form-field-appearance-outline.mat-focused .mdc-notched-outline__notch,
+.mat-mdc-form-field-appearance-outline.mat-focused .mdc-notched-outline__trailing {
+  border-color: var(--soft-blue) !important;
+  border-width: 2px !important;
+}
+
+.mat-mdc-icon-button .mdc-button__label, .mat-mdc-icon-button .mat-icon
+ {
+    z-index: 1;
+    position: relative;
+    bottom: 6px ;
+}
+
+/* ======================================================== */
+/* CALENDAR, HEATMAP & SCROLLBARS                           */
+/* ======================================================== */
+
+.calendar-tile {
+  background: var(--soft-bg);
+  border-radius: 12px;
+  box-shadow:
+    -3px -3px 8px var(--soft-light),
+    3px 3px 8px var(--soft-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.calendar-tile:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    -5px -5px 12px var(--soft-light),
+    5px 5px 12px var(--soft-shadow);
+}
+
+.calendar-tile:active {
+  box-shadow:
+    inset 2px 2px 5px var(--soft-shadow),
+    inset -2px -2px 5px var(--soft-light);
+  transform: none;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -20,163 +436,17 @@
   background: rgba(156, 163, 175, 0.7);
 }
 
-/* Material theme overrides and transitions */
-.mat-mdc-card {
-  border-radius: 1rem !important;
-  transition: all 0.2s ease-in-out;
-}
-
-/* Heatmap day styles */
-.calendar-tile {
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-.calendar-tile:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
 /* ======================================================== */
-/* GLOBAL DARK THEME STYLING                                */
+/* PREFERS REDUCED MOTION                                   */
 /* ======================================================== */
 
-html.dark,
-body.dark {
-  background-color: #0b1120 !important;
-  color: #f1f5f9 !important;
-  color-scheme: dark;
-}
-
-/* Dark mode surfaces and cards */
-.dark .bg-\[\#F6F7FB\] {
-  background-color: #0b1120 !important;
-}
-
-.dark .bg-white {
-  background-color: #1e293b !important;
-  border-color: #334155 !important;
-}
-
-.dark header.bg-white,
-.dark aside.bg-white,
-.dark nav.bg-white {
-  background-color: #111827 !important;
-  border-color: #1f2937 !important;
-}
-
-.dark .bg-slate-50 {
-  background-color: #0f172a !important;
-  border-color: #334155 !important;
-}
-
-.dark .bg-slate-100 {
-  background-color: rgba(255, 255, 255, 0.06) !important;
-  border-color: #334155 !important;
-}
-
-/* Dark mode text overrides */
-.dark .text-slate-900 {
-  color: #f8fafc !important;
-}
-
-.dark .text-slate-800 {
-  color: #f1f5f9 !important;
-}
-
-.dark .text-slate-700 {
-  color: #e2e8f0 !important;
-}
-
-.dark .text-slate-600 {
-  color: #cbd5e1 !important;
-}
-
-.dark .text-slate-500 {
-  color: #94a3b8 !important;
-}
-
-.dark .text-slate-400 {
-  color: #64748b !important;
-}
-
-/* Dark mode borders */
-.dark .border-slate-200,
-.dark .border-slate-200\/80,
-.dark .border-slate-200\/70,
-.dark .border-slate-100 {
-  border-color: #334155 !important;
-}
-
-.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
-.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
-  border-color: #334155 !important;
-}
-
-/* Dark mode hover states */
-.dark .hover\:bg-slate-50:hover,
-.dark .hover\:bg-slate-100:hover,
-.dark .hover\:bg-slate-50\/70:hover {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-}
-
-/* Dark mode inputs, selects & form controls */
-.dark input:not([type='checkbox']):not([type='radio']),
-.dark select,
-.dark textarea {
-  background-color: #0f172a !important;
-  color: #f8fafc !important;
-  border-color: #334155 !important;
-}
-
-.dark input::placeholder,
-.dark textarea::placeholder {
-  color: #64748b !important;
-}
-
-/* Dark mode Material Dialogs, Menus, Modals */
-.dark .mat-mdc-menu-panel,
-.dark .mat-mdc-dialog-container .mdc-dialog__surface,
-.dark .mdc-dialog__surface {
-  background-color: #1e293b !important;
-  color: #f8fafc !important;
-  border: 1px solid #334155 !important;
-}
-
-.dark .mat-mdc-menu-item {
-  color: #e2e8f0 !important;
-}
-
-.dark .mat-mdc-menu-item:hover {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-}
-
-.dark .mat-mdc-snack-bar-container {
-  --mdc-snackbar-container-color: #1e293b;
-  --mdc-snackbar-supporting-text-color: #f8fafc;
-}
-
-/* Dark mode table headers and cells */
-.dark table th {
-  background-color: #0f172a !important;
-  color: #94a3b8 !important;
-  border-color: #334155 !important;
-}
-
-.dark table td {
-  border-color: #1e293b !important;
-  color: #e2e8f0 !important;
-}
-
-.dark table tr:hover td {
-  background-color: rgba(255, 255, 255, 0.03) !important;
-}
-
-/* Dark mode calendar tile */
-.dark .calendar-tile {
-  background-color: #0f172a !important;
-  border-color: #334155 !important;
-}
-
-/* Smooth theme transition */
-body, header, aside, main, nav, div {
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

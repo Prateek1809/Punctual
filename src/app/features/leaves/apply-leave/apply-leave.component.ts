@@ -1,6 +1,6 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
@@ -20,7 +20,7 @@ import { SettingsService } from '../../../core/settings.service';
 import { LeaveRequest, LeaveBalance, UserProfile } from '../../../core/models';
 import { getISTDateString, calculateWorkingDays } from '../../../core/date-utils';
 import { StatusChipComponent } from '../../../shared/status-chip/status-chip.component';
-import { switchMap, of, map } from 'rxjs';
+import { switchMap, of, map, catchError } from 'rxjs';
 
 @Component({
   selector: 'app-apply-leave',
@@ -60,29 +60,36 @@ export class ApplyLeaveComponent {
   currentYear = this.todayDateStr.split('-')[0];
 
   // 1. Settings & Holidays for Day Calculation
-  settings$ = this.settingsService.getSettings();
+  settings$ = this.settingsService.getSettings().pipe(catchError(() => of(null)));
   settings = toSignal(this.settings$, { initialValue: null });
 
-  holidays$ = this.settingsService.getHolidays();
+  holidays$ = this.settingsService.getHolidays().pipe(catchError(() => of([])));
   holidays = toSignal(this.holidays$, { initialValue: [] });
 
   holidayDates = computed(() => this.holidays().map(h => h.date));
   weeklyOffs = computed(() => this.settings()?.weeklyOffs || [0, 6]);
 
-  // 2. User Leave Balance
+  // 2. User Leave Balance (Gracefully fallback if not allocated yet)
   leaveBalance$ = this.auth.userProfile$.pipe(
     switchMap(profile => {
       if (!profile) return of(null);
       const balRef = doc(this.firestore, `leaveBalances/${profile.uid}_${this.currentYear}`);
-      return docData(balRef).pipe(map(data => (data ? (data as LeaveBalance) : null)));
-    })
+      return docData(balRef).pipe(
+        map(data => (data ? (data as LeaveBalance) : null)),
+        catchError(() => of(null))
+      );
+    }),
+    catchError(() => of(null))
   );
   leaveBalance = toSignal(this.leaveBalance$, { initialValue: null });
 
   remainingDays = computed(() => {
     const bal = this.leaveBalance();
-    if (!bal || !bal.balances?.unified) return 18;
-    return Math.max(0, bal.balances.unified.allotted - bal.balances.unified.used);
+    if (bal && bal.balances?.unified) {
+      return Math.max(0, bal.balances.unified.allotted - bal.balances.unified.used);
+    }
+    const quota = this.settings()?.monthlyQuota ?? 1.5;
+    return Number((quota * 12).toFixed(1));
   });
 
   // 3. User's Own Leaves History
@@ -98,44 +105,104 @@ export class ApplyLeaveComponent {
         map(list => {
           const arr = list as LeaveRequest[];
           return arr.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-        })
+        }),
+        catchError(() => of([]))
       );
-    })
+    }),
+    catchError(() => of([]))
   );
   myLeaves = toSignal(this.myLeaves$, { initialValue: [] });
 
-  // 4. Teammates Approved Leaves (for overlap check)
-  allUsers$ = collectionData(collection(this.firestore, 'users'), { idField: 'uid' });
+  // 4. Teammates Approved Leaves (Only for managers, fallback to [] for employees)
+  allUsers$ = collectionData(collection(this.firestore, 'users'), { idField: 'uid' }).pipe(
+    catchError(() => of([]))
+  );
   allUsers = toSignal(this.allUsers$, { initialValue: [] });
 
-  teamLeaves$ = collectionData(
-    query(
-      collection(this.firestore, 'leaveRequests'),
-      where('status', '==', 'approved')
-    )
+  teamLeaves$ = this.auth.userProfile$.pipe(
+    switchMap(profile => {
+      // Employees do not query full collection to avoid permission errors
+      if (!profile || profile.role === 'employee') return of([]);
+      const q = query(
+        collection(this.firestore, 'leaveRequests'),
+        where('status', '==', 'approved')
+      );
+      return collectionData(q, { idField: 'id' }).pipe(
+        catchError(() => of([]))
+      );
+    }),
+    catchError(() => of([]))
   );
   teamLeaves = toSignal(this.teamLeaves$, { initialValue: [] });
 
-  // Form
+  // Form with cross-field validation: End Date must be on or after Start Date
   leaveForm = this.fb.group({
     startDate: [null as Date | null, Validators.required],
     endDate: [null as Date | null, Validators.required],
     isHalfDay: [false],
     reason: ['', [Validators.required, Validators.minLength(3)]]
+  }, {
+    validators: (group: AbstractControl): ValidationErrors | null => {
+      const s = group.get('startDate')?.value;
+      const e = group.get('endDate')?.value;
+      if (!s || !e) return null;
+      const sStr = this.formatDate(s);
+      const eStr = this.formatDate(e);
+      if (sStr && eStr && sStr > eStr) {
+        return { dateOrder: true };
+      }
+      return null;
+    }
+  });
+
+  constructor() {
+    // When start date changes:
+    // If end date is empty, default to start date; if end date is earlier than start date, auto-adjust to start date
+    this.leaveForm.get('startDate')?.valueChanges.subscribe(s => {
+      if (!s) return;
+      const e = this.leaveForm.get('endDate')?.value;
+      if (!e) {
+        this.leaveForm.patchValue({ endDate: s });
+      } else {
+        const sStr = this.formatDate(s);
+        const eStr = this.formatDate(e);
+        if (sStr && eStr && sStr > eStr) {
+          this.leaveForm.patchValue({ endDate: s });
+        }
+      }
+    });
+  }
+
+  // Form Value Signal for Angular computed reactivity
+  formValue = toSignal(this.leaveForm.valueChanges, {
+    initialValue: this.leaveForm.value
+  });
+
+  // Minimum allowed End Date for datepicker selection
+  minDate = computed(() => {
+    const s = this.formValue()?.startDate;
+    if (!s) return null;
+    return s instanceof Date ? s : new Date(s);
   });
 
   // Live Working Days Preview
   previewDaysCounted = computed(() => {
-    const sDate = this.leaveForm.get('startDate')?.value;
-    const eDate = this.leaveForm.get('endDate')?.value;
-    const isHalfDay = this.leaveForm.get('isHalfDay')?.value || false;
+    const val = this.formValue();
+    if (!val || !val.startDate || !val.endDate) return 0;
 
-    if (!sDate || !eDate) return 0;
+    const sStr = this.formatDate(val.startDate);
+    const eStr = this.formatDate(val.endDate);
+    if (!sStr || !eStr || sStr > eStr) return 0;
 
-    const sStr = this.formatDate(sDate);
-    const eStr = this.formatDate(eDate);
+    return calculateWorkingDays(sStr, eStr, !!val.isHalfDay, this.holidayDates(), this.weeklyOffs());
+  });
 
-    return calculateWorkingDays(sStr, eStr, isHalfDay, this.holidayDates(), this.weeklyOffs());
+  isEndDateBeforeStartDate = computed(() => {
+    const val = this.formValue();
+    if (!val || !val.startDate || !val.endDate) return false;
+    const sStr = this.formatDate(val.startDate);
+    const eStr = this.formatDate(val.endDate);
+    return !!(sStr && eStr && sStr > eStr);
   });
 
   balanceAfterLeave = computed(() => {
@@ -143,23 +210,25 @@ export class ApplyLeaveComponent {
   });
 
   isInsufficientBalance = computed(() => {
-    return this.previewDaysCounted() > this.remainingDays();
+    const days = this.previewDaysCounted();
+    const remaining = this.remainingDays();
+    return days > 0 && days > remaining;
   });
 
   // Live Teammate Overlap Warning
   overlappingTeammates = computed(() => {
-    const sDate = this.leaveForm.get('startDate')?.value;
-    const eDate = this.leaveForm.get('endDate')?.value;
-    if (!sDate || !eDate) return [];
+    const val = this.formValue();
+    if (!val || !val.startDate || !val.endDate) return [];
 
-    const sStr = this.formatDate(sDate);
-    const eStr = this.formatDate(eDate);
+    const sStr = this.formatDate(val.startDate);
+    const eStr = this.formatDate(val.endDate);
+    if (!sStr || !eStr || sStr > eStr) return [];
+
     const currentUid = this.auth.user()?.uid;
     const usersMap = new Map((this.allUsers() as UserProfile[]).map(u => [u.uid, u.name]));
 
     const overlaps = (this.teamLeaves() as LeaveRequest[]).filter(l => {
       if (l.uid === currentUid) return false;
-      // Date range overlap formula: sStr <= l.endDate && eStr >= l.startDate
       return sStr <= l.endDate && eStr >= l.startDate;
     });
 
@@ -170,18 +239,44 @@ export class ApplyLeaveComponent {
     }));
   });
 
-  private formatDate(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+  formatDate(d: any): string {
+    if (!d) return '';
+    if (typeof d === 'string') {
+      if (d.includes('T')) return d.split('T')[0];
+      return d;
+    }
+    if (d instanceof Date && !isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+    try {
+      const parsed = new Date(d);
+      if (!isNaN(parsed.getTime())) {
+        const y = parsed.getFullYear();
+        const m = String(parsed.getMonth() + 1).padStart(2, '0');
+        const day = String(parsed.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      }
+    } catch {
+      // ignore
+    }
+    return '';
   }
 
   async submitLeave() {
-    if (this.leaveForm.invalid || this.isSubmitting()) return;
+    if (this.leaveForm.invalid || this.isSubmitting()) {
+      this.leaveForm.markAllAsTouched();
+      return;
+    }
 
-    if (this.isInsufficientBalance()) {
-      this.snackBar.open('Cannot apply: Requested days exceed your remaining leave balance.', 'Close', {
+    const val = this.leaveForm.value;
+    const sStr = this.formatDate(val.startDate);
+    const eStr = this.formatDate(val.endDate);
+
+    if (sStr > eStr) {
+      this.snackBar.open('Cannot apply: End date cannot be earlier than start date.', 'Close', {
         duration: 4000
       });
       return;
@@ -189,8 +284,15 @@ export class ApplyLeaveComponent {
 
     const daysCount = this.previewDaysCounted();
     if (daysCount <= 0) {
-      this.snackBar.open('Selected dates fall entirely on holidays or weekly offs. 0 working days.', 'Close', {
+      this.snackBar.open('Selected dates fall entirely on company holidays or weekly off days (0 working days).', 'Close', {
         duration: 4000
+      });
+      return;
+    }
+
+    if (this.isInsufficientBalance()) {
+      this.snackBar.open(`Cannot apply: Requested ${daysCount} working days exceed your remaining balance (${this.remainingDays()} days).`, 'Close', {
+        duration: 5000
       });
       return;
     }
@@ -200,10 +302,6 @@ export class ApplyLeaveComponent {
       const user = this.auth.currentUser;
       const profile = this.auth.userProfile();
       if (!user) throw new Error('Not logged in');
-
-      const val = this.leaveForm.value;
-      const sStr = this.formatDate(val.startDate!);
-      const eStr = this.formatDate(val.endDate!);
 
       await addDoc(collection(this.firestore, 'leaveRequests'), {
         uid: user.uid,

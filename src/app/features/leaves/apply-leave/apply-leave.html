@@ -2,20 +2,20 @@
   <!-- Header & Balance Pill -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Leave Management</h2>
-      <p class="text-slate-500 text-sm mt-0.5">
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-[#1F2937] dark:text-[#f8fafc] tracking-tight">Leave Management</h2>
+      <p class="text-[#4B5563] dark:text-[#94a3b8] text-sm mt-0.5">
         Apply for leaves, track approval statuses, and manage your time off.
       </p>
     </div>
 
     <!-- Live Available Leave Pill -->
-    <div class="flex items-center gap-3 bg-white px-5 py-3 rounded-2xl border border-slate-200/80 shadow-sm self-start sm:self-auto">
-      <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+    <div class="surface !px-5 !py-3 flex items-center gap-3 self-start sm:self-auto">
+      <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-soft-surface-sm">
         <mat-icon>beach_access</mat-icon>
       </div>
       <div>
         <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Leave Balance</div>
-        <div class="text-lg font-extrabold text-indigo-600">
+        <div class="text-lg font-black text-blue-600 dark:text-blue-400">
           {{ remainingDays() }} <span class="text-xs text-slate-400 font-normal">days left</span>
         </div>
       </div>
@@ -23,13 +23,14 @@
   </div>
 
   <!-- Navigation Tabs: Apply vs History -->
-  <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-    <div class="border-b border-slate-100 flex items-center px-6 pt-2">
+  <div class="surface !p-0 overflow-hidden">
+    <!-- Soft Segmented Tab Controls -->
+    <div class="p-2 mx-6 mt-5 rounded-2xl bg-soft-bg shadow-soft-well-sm border border-slate-200/50 dark:border-slate-800 flex items-center gap-1 max-w-md">
       <button 
         type="button" 
         (click)="selectedTab.set(0)"
-        class="pb-3 px-4 text-sm font-semibold border-b-2 transition-all flex items-center gap-2"
-        [ngClass]="selectedTab() === 0 ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'">
+        class="flex-1 py-2 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2"
+        [ngClass]="selectedTab() === 0 ? 'bg-soft-bg shadow-soft-surface-sm text-blue-600 dark:text-blue-400 border border-slate-200/60 dark:border-slate-700' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'">
         <mat-icon class="!w-4 !h-4 !text-[18px]">add_circle_outline</mat-icon>
         Apply for Leave
       </button>
@@ -37,11 +38,11 @@
       <button 
         type="button" 
         (click)="selectedTab.set(1)"
-        class="pb-3 px-4 text-sm font-semibold border-b-2 transition-all flex items-center gap-2"
-        [ngClass]="selectedTab() === 1 ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'">
+        class="flex-1 py-2 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2"
+        [ngClass]="selectedTab() === 1 ? 'bg-soft-bg shadow-soft-surface-sm text-blue-600 dark:text-blue-400 border border-slate-200/60 dark:border-slate-700' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'">
         <mat-icon class="!w-4 !h-4 !text-[18px]">history</mat-icon>
         My Leave History
-        <span *ngIf="myLeaves().length > 0" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+        <span *ngIf="myLeaves().length > 0" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 shadow-soft-surface-sm">
           {{ myLeaves().length }}
         </span>
       </button>
@@ -54,9 +55,9 @@
         <!-- Date Pickers Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Start Date</label>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Start Date</label>
             <mat-form-field appearance="outline" class="w-full">
-              <input matInput [matDatepicker]="startPicker" formControlName="startDate" placeholder="Choose start date">
+              <input matInput [matDatepicker]="startPicker" (click)="startPicker.open()" formControlName="startDate" placeholder="Choose start date">
               <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
               <mat-datepicker #startPicker></mat-datepicker>
               <mat-error *ngIf="leaveForm.get('startDate')?.hasError('required')">Start date is required</mat-error>
@@ -64,12 +65,15 @@
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">End Date</label>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">End Date</label>
             <mat-form-field appearance="outline" class="w-full">
-              <input matInput [matDatepicker]="endPicker" formControlName="endDate" placeholder="Choose end date">
+              <input matInput [matDatepicker]="endPicker" [min]="minDate()" (click)="endPicker.open()" formControlName="endDate" placeholder="Choose end date">
               <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
               <mat-datepicker #endPicker></mat-datepicker>
               <mat-error *ngIf="leaveForm.get('endDate')?.hasError('required')">End date is required</mat-error>
+              <mat-error *ngIf="leaveForm.hasError('dateOrder') || isEndDateBeforeStartDate() || leaveForm.get('endDate')?.hasError('matDatepickerMin')">
+                End date must be on or after start date
+              </mat-error>
             </mat-form-field>
           </div>
         </div>
@@ -77,47 +81,65 @@
         <!-- Half-day checkbox -->
         <div class="flex items-center">
           <mat-checkbox formControlName="isHalfDay" color="primary">
-            <span class="text-sm font-medium text-slate-700">Half day leave (0.5 day deduction)</span>
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">Half day leave (0.5 day deduction)</span>
           </mat-checkbox>
         </div>
 
-        <!-- Live Live preview & Overlap Warnings -->
-        <div *ngIf="previewDaysCounted() > 0" class="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 space-y-2">
+        <!-- Live preview & Overlap Warnings in Soft Inset Wells -->
+        <div *ngIf="previewDaysCounted() > 0" class="p-4 rounded-2xl bg-soft-bg shadow-soft-well-sm border border-slate-200/50 dark:border-slate-800 space-y-2">
           <div class="flex items-center justify-between">
-            <span class="text-sm font-medium text-indigo-950">Working days to be deducted:</span>
-            <span class="text-base font-extrabold text-indigo-600">
+            <span class="text-sm font-semibold text-[#1F2937] dark:text-[#f8fafc]">Working days to be deducted:</span>
+            <span class="text-base font-extrabold text-blue-600 dark:text-blue-400">
               {{ previewDaysCounted() }} day{{ previewDaysCounted() === 1 ? '' : 's' }}
             </span>
           </div>
 
-          <div class="flex items-center justify-between text-xs text-indigo-700 pt-1 border-t border-indigo-100/60">
+          <div class="flex items-center justify-between text-xs text-blue-700 dark:text-blue-400 pt-1 border-t border-slate-200/50 dark:border-slate-800">
             <span>Remaining balance after deduction:</span>
             <span class="font-bold">{{ balanceAfterLeave() }} days</span>
           </div>
 
-          <p class="text-[11px] text-indigo-500 italic">
+          <p class="text-[11px] text-[#4B5563] dark:text-[#94a3b8] italic">
             * Note: Weekends (Sat/Sun) and declared holidays are automatically excluded from day counts.
           </p>
         </div>
 
+        <!-- Warning: Invalid Date Order -->
+        <div *ngIf="isEndDateBeforeStartDate()" class="p-4 rounded-2xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200 shadow-soft-well-sm flex items-start gap-3 text-rose-800 dark:text-rose-300 text-xs">
+          <mat-icon class="text-rose-600 shrink-0">error_outline</mat-icon>
+          <div>
+            <span class="font-bold">Invalid date range:</span>
+            End date cannot be earlier than start date.
+          </div>
+        </div>
+
         <!-- Warning: Insufficient Balance -->
-        <div *ngIf="isInsufficientBalance()" class="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-800 text-xs">
+        <div *ngIf="isInsufficientBalance()" class="p-4 rounded-2xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200 shadow-soft-well-sm flex items-start gap-3 text-rose-800 dark:text-rose-300 text-xs">
           <mat-icon class="text-rose-600 shrink-0">error_outline</mat-icon>
           <div>
             <span class="font-bold">Insufficient leave balance!</span>
-            You only have {{ remainingDays() }} days remaining, but requested {{ previewDaysCounted() }} working days.
+            You have {{ remainingDays() }} days remaining, but requested {{ previewDaysCounted() }} working days.
+          </div>
+        </div>
+
+        <!-- Warning: Non-Working Days -->
+        <div *ngIf="previewDaysCounted() <= 0 && formValue().startDate && formValue().endDate && !isEndDateBeforeStartDate()" class="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 shadow-soft-well-sm flex items-start gap-3 text-[#C2410C] dark:text-amber-300 text-xs">
+          <mat-icon class="text-[#EA580C] shrink-0">warning_amber</mat-icon>
+          <div>
+            <span class="font-bold">No working days counted:</span>
+            The selected dates fall entirely on official holidays or weekend off days.
           </div>
         </div>
 
         <!-- Warning: Teammate Overlap Warning -->
-        <div *ngIf="overlappingTeammates().length > 0" class="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-amber-900 text-xs">
-          <mat-icon class="text-amber-600 shrink-0">warning_amber</mat-icon>
+        <div *ngIf="overlappingTeammates().length > 0" class="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 shadow-soft-well-sm flex items-start gap-3 text-[#C2410C] dark:text-amber-300 text-xs">
+          <mat-icon class="text-[#EA580C] shrink-0">warning_amber</mat-icon>
           <div>
             <span class="font-bold">Teammate Leave Notice:</span>
             <div *ngFor="let tm of overlappingTeammates()" class="mt-1">
               &bull; <strong>{{ tm.name }}</strong> is also scheduled off from {{ tm.startDate }} to {{ tm.endDate }}.
             </div>
-            <p class="text-[11px] text-amber-700 mt-1">
+            <p class="text-[11px] text-[#C2410C] dark:text-amber-400 mt-1">
               Ensure project coverage with your manager before submitting.
             </p>
           </div>
@@ -125,22 +147,38 @@
 
         <!-- Reason -->
         <div>
-          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Reason for Leave</label>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+            Reason for Leave <span class="text-rose-500 font-bold">*</span>
+          </label>
           <mat-form-field appearance="outline" class="w-full">
-            <textarea matInput rows="3" formControlName="reason" placeholder="Please state your reason for taking leave..."></textarea>
+            <textarea matInput rows="3" formControlName="reason" placeholder="Please state your reason for taking leave (required)..."></textarea>
             <mat-error *ngIf="leaveForm.get('reason')?.hasError('required')">Reason is required</mat-error>
+            <mat-error *ngIf="leaveForm.get('reason')?.hasError('minlength')">Reason must be at least 3 characters</mat-error>
           </mat-form-field>
+        </div>
+
+        <!-- Helper guidance when form is not ready to submit -->
+        <div *ngIf="leaveForm.invalid" class="p-3 rounded-xl bg-slate-100/90 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
+          <div class="flex items-center gap-2">
+            <mat-icon class="!w-4 !h-4 !text-[18px] text-blue-600 dark:text-blue-400">info</mat-icon>
+            <span *ngIf="!leaveForm.get('startDate')?.value || !leaveForm.get('endDate')?.value">Please select both Start Date and End Date.</span>
+            <span *ngIf="leaveForm.hasError('dateOrder') || isEndDateBeforeStartDate()">End date cannot be earlier than start date.</span>
+            <span *ngIf="leaveForm.get('startDate')?.value && leaveForm.get('endDate')?.value && !leaveForm.hasError('dateOrder') && !isEndDateBeforeStartDate() && leaveForm.get('reason')?.invalid">
+              Please enter a reason (minimum 3 characters) to enable submit.
+            </span>
+          </div>
+          <span class="text-[11px] font-semibold text-slate-400 shrink-0">Incomplete</span>
         </div>
 
         <!-- Actions -->
         <div class="flex items-center justify-end gap-3 pt-2">
-          <button mat-button type="button" (click)="leaveForm.reset({isHalfDay: false})">Clear Form</button>
+          <button type="button" (click)="leaveForm.reset({isHalfDay: false})" class="soft-btn !py-2 !px-4 text-xs font-semibold text-slate-600">
+            Clear Form
+          </button>
           <button 
-            mat-flat-button 
-            color="primary" 
             type="submit" 
-            [disabled]="leaveForm.invalid || isInsufficientBalance() || isSubmitting() || previewDaysCounted() <= 0"
-            class="!h-11 !px-6 !rounded-xl">
+            [disabled]="leaveForm.invalid || isSubmitting()"
+            class="soft-btn-primary !h-11 !px-6 text-xs font-bold">
             <mat-spinner *ngIf="isSubmitting()" diameter="20" class="mr-2"></mat-spinner>
             <span>{{ isSubmitting() ? 'Submitting...' : 'Submit Application' }}</span>
           </button>
@@ -154,7 +192,7 @@
       <div *ngIf="myLeaves().length > 0; else noHistory" class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>
-            <tr class="border-b border-slate-200 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <tr class="border-b border-slate-200/60 dark:border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
               <th class="py-3 px-4">Dates</th>
               <th class="py-3 px-4">Duration</th>
               <th class="py-3 px-4">Reason</th>
@@ -163,16 +201,16 @@
               <th class="py-3 px-4 text-right">Action</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100 text-sm">
-            <tr *ngFor="let req of myLeaves()" class="hover:bg-slate-50 transition-colors">
-              <td class="py-3.5 px-4 font-medium text-slate-800 whitespace-nowrap">
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 text-sm">
+            <tr *ngFor="let req of myLeaves()" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+              <td class="py-3.5 px-4 font-semibold text-[#1F2937] dark:text-[#f8fafc] whitespace-nowrap">
                 {{ req.startDate | date:'mediumDate' }} &rarr; {{ req.endDate | date:'mediumDate' }}
-                <div *ngIf="req.isHalfDay" class="text-[11px] text-slate-400 font-normal">Half day</div>
+                <div *ngIf="req.isHalfDay" class="text-[11px] text-amber-600 dark:text-amber-400 font-bold">Half day</div>
               </td>
-              <td class="py-3.5 px-4 font-bold text-slate-700 whitespace-nowrap">
+              <td class="py-3.5 px-4 font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
                 {{ req.days }} day{{ req.days === 1 ? '' : 's' }}
               </td>
-              <td class="py-3.5 px-4 text-slate-600 max-w-xs truncate" [title]="req.reason">
+              <td class="py-3.5 px-4 text-[#4B5563] dark:text-[#94a3b8] max-w-xs truncate" [title]="req.reason">
                 {{ req.reason }}
               </td>
               <td class="py-3.5 px-4 whitespace-nowrap">
@@ -184,12 +222,11 @@
               <td class="py-3.5 px-4 text-right whitespace-nowrap">
                 <button 
                   *ngIf="canCancel(req)" 
-                  mat-button 
-                  color="warn" 
-                  class="!text-xs"
+                  type="button" 
+                  class="soft-btn !py-1 !px-3 text-xs font-semibold text-rose-600"
                   [disabled]="cancellingId() === req.id"
                   (click)="cancelRequest(req)">
-                  <mat-spinner *ngIf="cancellingId() === req.id" diameter="16" class="inline mr-1"></mat-spinner>
+                  <mat-spinner *ngIf="cancellingId() === req.id" diameter="14" class="inline mr-1"></mat-spinner>
                   Cancel
                 </button>
                 <span *ngIf="!canCancel(req)" class="text-xs text-slate-300">—</span>
@@ -201,14 +238,14 @@
 
       <ng-template #noHistory>
         <div class="py-12 text-center space-y-3">
-          <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+          <div class="w-12 h-12 rounded-full bg-soft-bg shadow-soft-well-sm text-slate-400 flex items-center justify-center mx-auto border border-slate-200/50 dark:border-slate-800">
             <mat-icon>beach_access</mat-icon>
           </div>
-          <div class="text-slate-800 font-semibold">No leave applications yet</div>
-          <p class="text-xs text-slate-500 max-w-sm mx-auto">
+          <div class="text-[#1F2937] dark:text-[#f8fafc] font-bold">No leave applications yet</div>
+          <p class="text-xs text-[#4B5563] dark:text-[#94a3b8] max-w-sm mx-auto">
             When you apply for time off, your pending and approved leave requests will appear here.
           </p>
-          <button mat-flat-button color="primary" (click)="selectedTab.set(0)" class="!mt-2">
+          <button type="button" (click)="selectedTab.set(0)" class="soft-btn-primary !py-2 !px-5 text-xs font-bold !mt-2">
             Apply Now
           </button>
         </div>

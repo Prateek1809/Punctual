@@ -2,24 +2,23 @@
   <!-- Header with Add Action -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Employee Directory</h2>
-      <p class="text-slate-500 text-sm mt-0.5">
-        Manage employee accounts, assign manager relationships, and configure access roles.
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-[#1F2937] dark:text-[#f8fafc] tracking-tight">Employee Directory</h2>
+      <p class="text-[#4B5563] dark:text-[#94a3b8] text-sm mt-0.5">
+        {{ isAdmin() ? 'Manage employee accounts, assign manager relationships, and configure access roles.' : 'Manage employee accounts in your team and add new employees.' }}
       </p>
     </div>
 
     <button 
-      mat-flat-button 
-      color="primary" 
+      type="button" 
       (click)="openAddModal()" 
-      class="!h-11 !px-5 !rounded-xl self-start sm:self-auto">
-      <mat-icon class="mr-1">person_add</mat-icon>
+      class="soft-btn-primary !h-11 !px-5 text-xs font-bold self-start sm:self-auto">
+      <mat-icon class="mr-1.5 !w-5 !h-5 !text-[20px]">person_add</mat-icon>
       Add Employee
     </button>
   </div>
 
-  <!-- Search & Role Filter Bar -->
-  <div class="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm flex flex-wrap items-center justify-between gap-4">
+  <!-- Search & Role Filter Bar in Soft UI Surface -->
+  <div class="surface !p-4 flex flex-wrap items-center justify-between gap-4">
     <div class="flex items-center gap-3 w-full sm:w-auto flex-1 max-w-md">
       <div class="relative w-full">
         <mat-icon class="absolute left-3.5 top-3 text-slate-400 !w-5 !h-5 !text-[20px]">search</mat-icon>
@@ -28,28 +27,38 @@
           [value]="searchQuery()" 
           (input)="searchQuery.set($any($event.target).value)" 
           placeholder="Search by employee name or email..." 
-          class="w-full pl-11 pr-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          class="w-full pl-11 pr-4 py-2.5 rounded-2xl bg-soft-bg shadow-soft-well-sm border border-slate-200/60 dark:border-slate-800 text-sm text-[#1F2937] dark:text-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-blue-500">
       </div>
     </div>
 
     <div class="flex items-center gap-3">
-      <mat-form-field appearance="outline" class="w-40 !mb-0" subscriptSizing="dynamic">
+      <mat-form-field *ngIf="isAdmin()" appearance="outline" class="w-36 !mb-0" subscriptSizing="dynamic">
         <mat-select [value]="roleFilter()" (selectionChange)="roleFilter.set($event.value)">
           <mat-option value="all">All Roles</mat-option>
           <mat-option value="employee">Employees</mat-option>
           <mat-option value="manager">Managers</mat-option>
-          <mat-option value="admin">Admins</mat-option>
         </mat-select>
       </mat-form-field>
+
+      <mat-form-field appearance="outline" class="w-36 !mb-0" subscriptSizing="dynamic">
+        <mat-select [value]="statusFilter()" (selectionChange)="statusFilter.set($event.value)">
+          <mat-option value="all">All Status</mat-option>
+          <mat-option value="active">Active Only</mat-option>
+          <mat-option value="inactive">Deactivated</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <span class="text-xs font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+        {{ filteredUsers().length }} Employee{{ filteredUsers().length === 1 ? '' : 's' }}
+      </span>
     </div>
   </div>
 
   <!-- Employee Directory Table -->
-  <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden p-6 sm:p-8">
+  <div class="surface !p-6 sm:!p-8 overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-left border-collapse text-sm">
         <thead>
-          <tr class="border-b border-slate-200 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          <tr class="border-b border-slate-200/60 dark:border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
             <th class="py-3 px-4">Employee</th>
             <th class="py-3 px-4">Role</th>
             <th class="py-3 px-4">Reports To</th>
@@ -58,31 +67,31 @@
             <th class="py-3 px-4 text-right">Actions</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
-          <tr *ngFor="let u of filteredUsers()" class="hover:bg-slate-50 transition-colors" [class.opacity-50]="!u.isActive">
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60">
+          <tr *ngFor="let u of filteredUsers()" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors" [class.opacity-50]="!u.isActive">
             <td class="py-3.5 px-4 whitespace-nowrap">
-              <div class="font-bold text-slate-900">{{ u.name }}</div>
+              <div class="font-bold text-[#1F2937] dark:text-[#f8fafc]">{{ u.name }}</div>
               <div class="text-xs text-slate-400 font-normal">{{ u.email }}</div>
             </td>
             <td class="py-3.5 px-4 whitespace-nowrap">
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider"
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-soft-surface-sm"
                     [ngClass]="{
-                      'bg-indigo-100 text-indigo-800': u.role === 'admin',
+                      'bg-blue-100 text-blue-800': u.role === 'admin',
                       'bg-teal-100 text-teal-800': u.role === 'manager',
                       'bg-slate-100 text-slate-700': u.role === 'employee'
                     }">
                 {{ u.role }}
               </span>
             </td>
-            <td class="py-3.5 px-4 text-slate-600 whitespace-nowrap">
+            <td class="py-3.5 px-4 text-[#4B5563] dark:text-[#94a3b8] whitespace-nowrap font-medium">
               {{ getManagerName(u.managerId) }}
             </td>
-            <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+            <td class="py-3.5 px-4 text-slate-400 whitespace-nowrap">
               {{ u.joinDate | date:'mediumDate' }}
             </td>
             <td class="py-3.5 px-4 whitespace-nowrap">
-              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                    [ngClass]="u.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold shadow-soft-surface-sm"
+                    [ngClass]="u.isActive ? 'bg-emerald-50 dark:bg-emerald-950/40 text-[#15803D] dark:text-emerald-400 border border-emerald-200' : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200'">
                 <span class="w-1.5 h-1.5 rounded-full" [ngClass]="u.isActive ? 'bg-emerald-500' : 'bg-rose-500'"></span>
                 {{ u.isActive ? 'Active' : 'Deactivated' }}
               </span>
@@ -91,19 +100,28 @@
               <button 
                 mat-icon-button 
                 (click)="openEditModal(u)" 
+                class="soft-btn !w-8 !h-8 !p-1 !rounded-xl"
                 matTooltip="Edit Employee Role & Manager">
-                <mat-icon class="text-slate-600">edit</mat-icon>
+                <mat-icon class="!w-4 !h-4 !text-[18px] text-slate-600 dark:text-slate-300">edit</mat-icon>
               </button>
 
               <button 
                 mat-icon-button 
                 [disabled]="togglingUid() === u.uid"
                 (click)="toggleUserActive(u)" 
+                class="soft-btn !w-8 !h-8 !p-1 !rounded-xl"
                 [matTooltip]="u.isActive ? 'Deactivate Employee' : 'Reactivate Employee'">
-                <mat-icon [class.text-rose-600]="u.isActive" [class.text-emerald-600]="!u.isActive">
+                <mat-icon class="!w-4 !h-4 !text-[18px]" [class.text-rose-600]="u.isActive" [class.text-emerald-600]="!u.isActive">
                   {{ u.isActive ? 'block' : 'check_circle' }}
                 </mat-icon>
               </button>
+            </td>
+          </tr>
+          <tr *ngIf="filteredUsers().length === 0">
+            <td colspan="6" class="text-center py-12 text-slate-400 text-sm">
+              <mat-icon class="!w-10 !h-10 !text-[40px] mb-2 text-slate-300 dark:text-slate-600">people_outline</mat-icon>
+              <div class="font-semibold text-slate-500 dark:text-slate-400">No employees found</div>
+              <p class="text-xs text-slate-400 mt-1">Try adjusting your search query or status filter.</p>
             </td>
           </tr>
         </tbody>
@@ -114,20 +132,20 @@
 
 <!-- Modal: Add New Employee -->
 <div *ngIf="showAddModal()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-  <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
-    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+  <div class="surface !p-6 sm:!p-8 max-w-lg w-full shadow-soft-surface-lg space-y-5 animate-in fade-in zoom-in-95">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800">
       <div>
-        <h3 class="text-lg font-bold text-slate-900">Add New Employee</h3>
+        <h3 class="text-lg font-bold text-[#1F2937] dark:text-[#f8fafc]">Add New Employee</h3>
         <p class="text-xs text-slate-400">Creates user credentials, sets custom claims and leave quota</p>
       </div>
-      <button mat-icon-button (click)="closeAddModal()">
-        <mat-icon>close</mat-icon>
+      <button mat-icon-button (click)="closeAddModal()" class="soft-btn !w-8 !h-8 !p-1 !rounded-full">
+        <mat-icon class="!w-4 !h-4 !text-[18px]">close</mat-icon>
       </button>
     </div>
 
     <form [formGroup]="addForm" (ngSubmit)="submitCreateEmployee()" class="space-y-4">
       <div>
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Full Name</label>
+        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Full Name</label>
         <mat-form-field appearance="outline" class="w-full">
           <input matInput formControlName="name" placeholder="John Doe">
           <mat-error *ngIf="addForm.get('name')?.hasError('required')">Name is required</mat-error>
@@ -135,7 +153,7 @@
       </div>
 
       <div>
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Work Email</label>
+        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Work Email</label>
         <mat-form-field appearance="outline" class="w-full">
           <input matInput type="email" formControlName="email" placeholder="john@company.com">
           <mat-error *ngIf="addForm.get('email')?.hasError('required')">Email is required</mat-error>
@@ -144,7 +162,7 @@
       </div>
 
       <div>
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Temporary Password</label>
+        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Temporary Password</label>
         <mat-form-field appearance="outline" class="w-full">
           <input matInput type="password" formControlName="password" placeholder="Minimum 6 characters">
           <mat-error *ngIf="addForm.get('password')?.hasError('required')">Password is required</mat-error>
@@ -154,18 +172,18 @@
 
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Role</label>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Role</label>
           <mat-form-field appearance="outline" class="w-full">
             <mat-select formControlName="role">
               <mat-option value="employee">Employee</mat-option>
-              <mat-option value="manager">Manager</mat-option>
-              <mat-option value="admin">Admin</mat-option>
+              <mat-option *ngIf="isAdmin()" value="manager">Manager</mat-option>
+              <mat-option *ngIf="isAdmin()" value="admin">Admin</mat-option>
             </mat-select>
           </mat-form-field>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Assign Manager</label>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Assign Manager</label>
           <mat-form-field appearance="outline" class="w-full">
             <mat-select formControlName="managerId">
               <mat-option value="">None (Self)</mat-option>
@@ -176,14 +194,12 @@
       </div>
 
       <div class="flex items-center justify-end gap-3 pt-2">
-        <button mat-button type="button" (click)="closeAddModal()">Cancel</button>
+        <button type="button" (click)="closeAddModal()" class="soft-btn !py-2 !px-4 text-xs font-semibold text-slate-600">Cancel</button>
         <button 
-          mat-flat-button 
-          color="primary" 
           type="submit" 
           [disabled]="addForm.invalid || isCreating()"
-          class="!h-11 !px-6 !rounded-xl">
-          <mat-spinner *ngIf="isCreating()" diameter="18" class="mr-2"></mat-spinner>
+          class="soft-btn-primary !h-11 !px-6 text-xs font-bold">
+          <mat-spinner *ngIf="isCreating()" diameter="18" class="mr-2 !text-white"></mat-spinner>
           <span>{{ isCreating() ? 'Creating...' : 'Create Employee' }}</span>
         </button>
       </div>
@@ -193,38 +209,38 @@
 
 <!-- Modal: Edit Employee -->
 <div *ngIf="editingUser()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-  <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
-    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+  <div class="surface !p-6 sm:!p-8 max-w-md w-full shadow-soft-surface-lg space-y-5 animate-in fade-in zoom-in-95">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800">
       <div>
-        <h3 class="text-lg font-bold text-slate-900">Edit Employee</h3>
+        <h3 class="text-lg font-bold text-[#1F2937] dark:text-[#f8fafc]">Edit Employee</h3>
         <p class="text-xs text-slate-400">{{ editingUser()?.email }}</p>
       </div>
-      <button mat-icon-button (click)="closeEditModal()">
-        <mat-icon>close</mat-icon>
+      <button mat-icon-button (click)="closeEditModal()" class="soft-btn !w-8 !h-8 !p-1 !rounded-full">
+        <mat-icon class="!w-4 !h-4 !text-[18px]">close</mat-icon>
       </button>
     </div>
 
     <form [formGroup]="editForm" (ngSubmit)="submitUpdateEmployee()" class="space-y-4">
       <div>
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Full Name</label>
+        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Full Name</label>
         <mat-form-field appearance="outline" class="w-full">
           <input matInput formControlName="name">
         </mat-form-field>
       </div>
 
       <div>
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Role</label>
+        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Role</label>
         <mat-form-field appearance="outline" class="w-full">
           <mat-select formControlName="role">
             <mat-option value="employee">Employee</mat-option>
-            <mat-option value="manager">Manager</mat-option>
-            <mat-option value="admin">Admin</mat-option>
+            <mat-option *ngIf="isAdmin()" value="manager">Manager</mat-option>
+            <mat-option *ngIf="isAdmin()" value="admin">Admin</mat-option>
           </mat-select>
         </mat-form-field>
       </div>
 
       <div>
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Reports To (Manager)</label>
+        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Reports To (Manager)</label>
         <mat-form-field appearance="outline" class="w-full">
           <mat-select formControlName="managerId">
             <mat-option value="">None (Self)</mat-option>
@@ -234,14 +250,12 @@
       </div>
 
       <div class="flex items-center justify-end gap-3 pt-2">
-        <button mat-button type="button" (click)="closeEditModal()">Cancel</button>
+        <button type="button" (click)="closeEditModal()" class="soft-btn !py-2 !px-4 text-xs font-semibold text-slate-600">Cancel</button>
         <button 
-          mat-flat-button 
-          color="primary" 
           type="submit" 
           [disabled]="editForm.invalid || isUpdating()"
-          class="!h-11 !px-6 !rounded-xl">
-          <mat-spinner *ngIf="isUpdating()" diameter="18" class="mr-2"></mat-spinner>
+          class="soft-btn-primary !h-11 !px-6 text-xs font-bold">
+          <mat-spinner *ngIf="isUpdating()" diameter="18" class="mr-2 !text-white"></mat-spinner>
           <span>{{ isUpdating() ? 'Saving...' : 'Save Changes' }}</span>
         </button>
       </div>

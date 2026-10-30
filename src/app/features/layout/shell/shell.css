@@ -1,0 +1,6 @@
+/* Hide 3-line hamburger menu button on desktop/web screens (>= 1024px) */
+@media (min-width: 1024px) {
+  .sidebar-toggle-btn {
+    display: none !important;
+  }
+}

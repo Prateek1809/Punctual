@@ -73,14 +73,13 @@ export const setupInitialAdmin = onCall(async (request) => {
     adminName,
     adminEmail,
     adminPassword,
-    officeName = 'Head Office',
-    officeLat = 19.0760,
-    officeLng = 72.8777,
+    officeName,
+    officeLat,
+    officeLng,
     radiusM = 200,
-    officeStart = '10:10',
-    officeEnd = '19:30',
+    officeStart,
+    officeEnd,
     graceMinutes = 10,
-    seedHolidays = true,
   } = data;
 
   if (!adminName || !adminEmail || !adminPassword) {
@@ -98,7 +97,6 @@ export const setupInitialAdmin = onCall(async (request) => {
     await auth.setCustomUserClaims(userRecord.uid, { role: 'admin' });
 
     const { dateStr } = getISTDateTime();
-    const currentYear = dateStr.split('-')[0];
 
     // 2. Set Admin Document in users
     await db.collection('users').doc(userRecord.uid).set({
@@ -111,54 +109,33 @@ export const setupInitialAdmin = onCall(async (request) => {
     });
 
     // 3. Initialize Company Settings
+    const hasOffice = officeName && officeLat != null && officeLng != null && !isNaN(Number(officeLat)) && !isNaN(Number(officeLng));
     const companySettings = {
-      officeStart,
-      officeEnd,
-      graceMinutes: Number(graceMinutes),
+      officeStart: officeStart || '',
+      officeEnd: officeEnd || '',
+      graceMinutes: Number(graceMinutes || 0),
       weeklyOffs: [0, 6], // Sunday, Saturday
-      halfDayMinutes: 270,
-      fullDayMinutes: 540,
+      halfDayMinutes: 240,
+      fullDayMinutes: 480,
       yearStartMonth: 1,
       monthlyQuota: 1.5,
       attendancePolicy: {
         mode: 'either',
         onFailure: 'flag',
-        allowedIps: ['127.0.0.1'],
+        allowedIps: [],
         maxAccuracyM: 300,
-        offices: [
+        offices: hasOffice ? [
           {
             name: officeName,
             lat: Number(officeLat),
             lng: Number(officeLng),
-            radiusM: Number(radiusM),
+            radiusM: Number(radiusM || 200),
           },
-        ],
+        ] : [],
       },
     };
 
     await db.collection('settings').doc('company').set(companySettings, { merge: true });
-
-    // 5. Seed Standard Holidays if requested
-    if (seedHolidays) {
-      const year = Number(currentYear);
-      const holidays = [
-        { date: `${year}-01-26`, name: 'Republic Day' },
-        { date: `${year}-03-25`, name: 'Holi' },
-        { date: `${year}-04-14`, name: 'Ambedkar Jayanti' },
-        { date: `${year}-05-01`, name: 'Maharashtra Day / May Day' },
-        { date: `${year}-08-15`, name: 'Independence Day' },
-        { date: `${year}-10-02`, name: 'Gandhi Jayanti' },
-        { date: `${year}-10-20`, name: 'Dussehra' },
-        { date: `${year}-11-01`, name: 'Diwali' },
-        { date: `${year}-12-25`, name: 'Christmas Day' },
-      ];
-
-      const batch = db.batch();
-      for (const h of holidays) {
-        batch.set(db.collection('holidays').doc(h.date), h);
-      }
-      await batch.commit();
-    }
 
     // 6. Audit Log
     await db.collection('auditLogs').add({
@@ -187,8 +164,9 @@ export const createEmployee = onCall(async (request) => {
   const context = request;
   const data = request.data || {};
 
-  if (!context.auth || context.auth.token.role !== 'admin') {
-    throw new HttpsError('permission-denied', 'Only admins can create employees.');
+  const callerRole = context.auth?.token?.role;
+  if (!context.auth || (callerRole !== 'admin' && callerRole !== 'manager')) {
+    throw new HttpsError('permission-denied', 'Only admins and managers can create employees.');
   }
 
   const { email, password, name, role = 'employee', managerId } = data;
@@ -203,30 +181,43 @@ export const createEmployee = onCall(async (request) => {
       displayName: name,
     });
 
-    const userRole = role === 'admin' || role === 'manager' ? role : 'employee';
+    // Managers can ONLY create employees. Admins can create employees, managers, or admins.
+    const userRole = callerRole === 'admin' && (role === 'admin' || role === 'manager') 
+      ? role 
+      : 'employee';
     await auth.setCustomUserClaims(userRecord.uid, { role: userRole });
 
     const { dateStr } = getISTDateTime();
     const currentYear = dateStr.split('-')[0];
+
+    const targetManagerId = callerRole === 'manager'
+      ? (managerId || context.auth.uid)
+      : (managerId || null);
 
     // Create user profile
     await db.collection('users').doc(userRecord.uid).set({
       name,
       email,
       role: userRole,
-      managerId: managerId || null,
+      managerId: targetManagerId,
       joinDate: dateStr,
       isActive: true,
     });
 
-    // Create opening leave balance only for employees (18 days annual unified pool)
+    // Create opening leave balance only for employees based on company settings
     if (userRole === 'employee') {
+      const companyDoc = await db.collection('settings').doc('company').get();
+      const quota = companyDoc.data()?.monthlyQuota ?? 1.5;
+      const month = Number(dateStr.split('-')[1]);
+      const remainingMonths = Math.max(1, 12 - month + 1);
+      const initialAllotted = Number((quota * remainingMonths).toFixed(1));
+
       await db.collection('leaveBalances').doc(`${userRecord.uid}_${currentYear}`).set({
         uid: userRecord.uid,
         year: currentYear,
         balances: {
           unified: {
-            allotted: 18,
+            allotted: initialAllotted,
             used: 0,
           },
         },
@@ -236,10 +227,10 @@ export const createEmployee = onCall(async (request) => {
     // Audit Log
     await db.collection('auditLogs').add({
       actorUid: context.auth.uid,
-      actorName: context.auth.token.name || context.auth.token.email || 'Admin',
+      actorName: context.auth.token.name || context.auth.token.email || (callerRole === 'admin' ? 'Admin' : 'Manager'),
       action: 'CREATE_EMPLOYEE',
       targetId: userRecord.uid,
-      after: { name, email, role: userRole, managerId: managerId || null },
+      after: { name, email, role: userRole, managerId: targetManagerId },
       timestamp: new Date().toISOString(),
     });
 
@@ -253,8 +244,9 @@ export const updateEmployee = onCall(async (request) => {
   const context = request;
   const data = request.data || {};
 
-  if (!context.auth || context.auth.token.role !== 'admin') {
-    throw new HttpsError('permission-denied', 'Only admins can update employees.');
+  const callerRole = context.auth?.token?.role;
+  if (!context.auth || (callerRole !== 'admin' && callerRole !== 'manager')) {
+    throw new HttpsError('permission-denied', 'Only admins and managers can update employees.');
   }
 
   const { uid, role, managerId, isActive, name } = data;
@@ -269,9 +261,19 @@ export const updateEmployee = onCall(async (request) => {
   }
 
   const before = userDoc.data();
+  if (callerRole === 'manager') {
+    // Manager can only manage employees
+    if (before?.role !== 'employee') {
+      throw new HttpsError('permission-denied', 'Managers can only update employee profiles.');
+    }
+    if (role && role !== 'employee') {
+      throw new HttpsError('permission-denied', 'Managers cannot change user role.');
+    }
+  }
+
   const updates: any = {};
 
-  if (role && (role === 'employee' || role === 'manager' || role === 'admin')) {
+  if (callerRole === 'admin' && role && (role === 'employee' || role === 'manager' || role === 'admin')) {
     updates.role = role;
     await auth.setCustomUserClaims(uid, { role });
   }
@@ -284,7 +286,7 @@ export const updateEmployee = onCall(async (request) => {
 
   await db.collection('auditLogs').add({
     actorUid: context.auth.uid,
-    actorName: context.auth.token.name || context.auth.token.email || 'Admin',
+    actorName: context.auth.token.name || context.auth.token.email || (callerRole === 'admin' ? 'Admin' : 'Manager'),
     action: 'UPDATE_EMPLOYEE',
     targetId: uid,
     before,

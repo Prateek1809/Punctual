@@ -2,23 +2,23 @@
   <!-- Header -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Attendance Corrections</h2>
-      <p class="text-slate-500 text-sm mt-0.5">
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-[#1F2937] dark:text-[#f8fafc] tracking-tight">Attendance Corrections</h2>
+      <p class="text-[#4B5563] dark:text-[#94a3b8] text-sm mt-0.5">
         Manually adjust employee punch times or attendance status. Every correction is recorded in the immutable audit log.
       </p>
     </div>
   </div>
 
-  <!-- Selection Controls Card -->
-  <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-4">
-    <div class="border-b border-slate-100 pb-3">
-      <h3 class="text-lg font-bold text-slate-900">1. Select Employee & Date</h3>
+  <!-- Selection Controls Card in Soft UI Surface -->
+  <div class="surface !p-6 sm:!p-8 space-y-4">
+    <div class="border-b border-slate-200/60 dark:border-slate-800 pb-3">
+      <h3 class="text-lg font-bold text-[#1F2937] dark:text-[#f8fafc]">1. Select Employee & Date</h3>
       <p class="text-xs text-slate-400">Choose the employee and day you need to adjust</p>
     </div>
 
     <div class="flex flex-col sm:flex-row sm:items-center gap-4">
       <div class="flex-1">
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Employee</label>
+        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Employee</label>
         <mat-form-field appearance="outline" class="w-full">
           <mat-select [value]="selectedEmployeeUid()" (selectionChange)="selectedEmployeeUid.set($event.value); fetchRecord()">
             <mat-option *ngFor="let u of users()" [value]="u.uid">
@@ -29,7 +29,7 @@
       </div>
 
       <div class="w-full sm:w-56">
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Date</label>
+        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Date</label>
         <mat-form-field appearance="outline" class="w-full">
           <input matInput type="date" [value]="selectedDate()" (input)="selectedDate.set($any($event.target).value); fetchRecord()">
         </mat-form-field>
@@ -37,24 +37,24 @@
 
       <div class="sm:self-center sm:pt-4">
         <button 
-          mat-stroked-button 
+          type="button" 
           (click)="fetchRecord()"
           [disabled]="isLoadingRecord() || !selectedEmployeeUid()"
-          class="!h-12 !px-5 !rounded-xl">
+          class="soft-btn !h-12 !px-5 text-xs font-semibold">
           <mat-spinner *ngIf="isLoadingRecord()" diameter="16" class="mr-2"></mat-spinner>
           <span>Find Record</span>
         </button>
       </div>
     </div>
 
-    <!-- Current Record Snapshot -->
-    <div *ngIf="selectedEmployeeUid()" class="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-3">
+    <!-- Current Record Snapshot in Soft Inset Well -->
+    <div *ngIf="selectedEmployeeUid()" class="p-4 rounded-2xl bg-soft-bg shadow-soft-well-sm border border-slate-200/50 dark:border-slate-800 text-xs text-[#4B5563] dark:text-[#94a3b8] flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2">
-        <span class="font-bold text-slate-800">Current Status:</span>
+        <span class="font-bold text-[#1F2937] dark:text-[#f8fafc]">Current Status:</span>
         <app-status-chip [status]="currentRecord()?.status || 'absent'"></app-status-chip>
       </div>
 
-      <div *ngIf="currentRecord() as r" class="flex items-center gap-4">
+      <div *ngIf="currentRecord() as r" class="flex items-center gap-4 text-[#1F2937] dark:text-[#f8fafc]">
         <span>In: <strong>{{ formatTime(r.checkIn) }}</strong></span>
         <span>Out: <strong>{{ formatTime(r.checkOut) }}</strong></span>
         <span>Worked: <strong>{{ formatMins(r.workedMinutes) }}</strong></span>
@@ -67,30 +67,33 @@
   </div>
 
   <!-- Edit & Adjust Card -->
-  <div *ngIf="selectedEmployeeUid()" class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
-    <div class="border-b border-slate-100 pb-3">
-      <h3 class="text-lg font-bold text-slate-900">2. Adjust Attendance Details</h3>
+  <div *ngIf="selectedEmployeeUid()" class="surface !p-6 sm:!p-8 space-y-6">
+    <div class="border-b border-slate-200/60 dark:border-slate-800 pb-3">
+      <h3 class="text-lg font-bold text-[#1F2937] dark:text-[#f8fafc]">2. Adjust Attendance Details</h3>
       <p class="text-xs text-slate-400">Set corrected check-in/out timings and appropriate status</p>
     </div>
 
     <form [formGroup]="correctionForm" (ngSubmit)="saveCorrection()" class="space-y-4">
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Check In Time</label>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Check In Time</label>
           <mat-form-field appearance="outline" class="w-full">
             <input matInput type="time" formControlName="checkInTime">
+            <mat-error *ngIf="correctionForm.get('checkInTime')?.hasError('required')">Check-in time is required</mat-error>
           </mat-form-field>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Check Out Time</label>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Check Out Time</label>
           <mat-form-field appearance="outline" class="w-full">
-            <input matInput type="time" formControlName="checkOutTime">
+            <input matInput type="time" [min]="correctionForm.get('checkInTime')?.value" formControlName="checkOutTime">
+            <mat-error *ngIf="correctionForm.get('checkOutTime')?.hasError('required')">Check-out time is required</mat-error>
+            <mat-error *ngIf="correctionForm.get('checkOutTime')?.hasError('endBeforeStart')">Check-out time must be after check-in time</mat-error>
           </mat-form-field>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Status</label>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Status</label>
           <mat-form-field appearance="outline" class="w-full">
             <mat-select formControlName="status">
               <mat-option value="present">Present</mat-option>
@@ -104,7 +107,7 @@
       </div>
 
       <div>
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Reason for Admin Correction</label>
+        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Reason for Admin Correction</label>
         <mat-form-field appearance="outline" class="w-full">
           <textarea matInput rows="3" formControlName="note" placeholder="Provide justification for this attendance correction (required for audit)..."></textarea>
           <mat-error *ngIf="correctionForm.get('note')?.hasError('required')">Reason is required</mat-error>
@@ -113,12 +116,10 @@
 
       <div class="flex justify-end pt-2">
         <button 
-          mat-flat-button 
-          color="primary" 
           type="submit" 
           [disabled]="correctionForm.invalid || isSaving()"
-          class="!h-11 !px-6 !rounded-xl !bg-indigo-600">
-          <mat-spinner *ngIf="isSaving()" diameter="18" class="mr-2"></mat-spinner>
+          class="soft-btn-primary !h-11 !px-6 text-xs font-bold">
+          <mat-spinner *ngIf="isSaving()" diameter="18" class="mr-2 !text-white"></mat-spinner>
           <span>{{ isSaving() ? 'Saving...' : 'Save & Record Audit Log' }}</span>
         </button>
       </div>

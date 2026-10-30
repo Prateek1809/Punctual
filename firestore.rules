@@ -23,7 +23,7 @@ service cloud.firestore {
     }
 
     match /leaveRequests/{id} {
-      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isManager());
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isManager() || resource.data.status == 'approved');
       allow create: if signedIn() 
         && request.resource.data.uid == request.auth.uid 
         && request.resource.data.status == 'pending';

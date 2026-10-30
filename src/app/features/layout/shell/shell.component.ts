@@ -11,7 +11,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatBadgeModule } from '@angular/material/badge';
 import { Firestore, collection, collectionData, query, where } from '@angular/fire/firestore';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { getISTTimeString } from '../../../core/date-utils';
+import { getISTTimeString, getISTDateFormatted } from '../../../core/date-utils';
 import { filter } from 'rxjs';
 
 @Component({
@@ -39,6 +39,7 @@ export class ShellComponent {
   sidebarOpen = signal(true);
   isDarkMode = signal(false);
   currentTime = signal(getISTTimeString());
+  currentDateFormatted = signal(getISTDateFormatted());
 
   userProfile = this.authService.userProfile;
   currentRole = this.authService.currentRole;
@@ -49,6 +50,7 @@ export class ShellComponent {
   });
 
   isAdmin = computed(() => this.currentRole() === 'admin');
+  isManager = computed(() => this.currentRole() === 'manager');
   isEmployee = computed(() => this.currentRole() === 'employee');
 
   // Pending leave requests count for manager badge
@@ -90,7 +92,8 @@ export class ShellComponent {
     // Clock update interval
     setInterval(() => {
       this.currentTime.set(getISTTimeString());
-    }, 10000);
+      this.currentDateFormatted.set(getISTDateFormatted());
+    }, 1000);
 
     // Auto collapse sidebar on mobile route change
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => {

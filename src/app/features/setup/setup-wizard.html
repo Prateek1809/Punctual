@@ -1,64 +1,64 @@
-<div class="min-h-screen bg-slate-50 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 animate-in fade-in duration-300">
+<div class="min-h-screen bg-soft-bg flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 animate-in fade-in duration-300">
   <div class="max-w-2xl w-full mx-auto space-y-8">
     <!-- Brand Header -->
     <div class="text-center space-y-2">
       <div class="inline-flex items-center justify-center mb-2">
-        <img src="favicon.svg" alt="Punctual Logo" class="w-16 h-16 rounded-3xl shadow-xl shadow-indigo-200" />
+        <img src="favicon.svg" alt="Punctual Logo" class="w-16 h-16 rounded-3xl shadow-soft-surface-lg" />
       </div>
-      <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+      <h1 class="text-3xl sm:text-4xl font-black text-[#1F2937] dark:text-[#f8fafc] tracking-tight">
         Welcome to Punctual
       </h1>
-      <p class="text-slate-500 text-sm max-w-md mx-auto">
+      <p class="text-[#4B5563] dark:text-[#94a3b8] text-sm max-w-md mx-auto">
         No users detected. Complete this one-time initial setup wizard to configure your administrator account and office policies.
       </p>
     </div>
 
-    <!-- Stepper Indicator -->
-    <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm flex items-center justify-between text-xs font-bold text-slate-400">
-      <div class="flex items-center gap-2" [class.text-indigo-600]="currentStep() >= 1">
-        <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs" 
-              [ngClass]="currentStep() >= 1 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'">1</span>
+    <!-- Stepper Indicator in Soft UI Surface -->
+    <div class="surface !p-4 flex items-center justify-between text-xs font-bold text-slate-400">
+      <div class="flex items-center gap-2" [class.text-blue-600]="currentStep() >= 1" [class.dark:text-blue-400]="currentStep() >= 1">
+        <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-soft-surface-sm" 
+              [ngClass]="currentStep() >= 1 ? 'bg-blue-600 text-white font-bold' : 'bg-soft-bg shadow-soft-well-sm text-slate-400'">1</span>
         <span class="hidden sm:inline">Admin Account</span>
       </div>
 
-      <div class="h-0.5 flex-1 mx-2 sm:mx-4" [ngClass]="currentStep() >= 2 ? 'bg-indigo-600' : 'bg-slate-200'"></div>
+      <div class="h-0.5 flex-1 mx-2 sm:mx-4" [ngClass]="currentStep() >= 2 ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-800'"></div>
 
-      <div class="flex items-center gap-2" [class.text-indigo-600]="currentStep() >= 2">
-        <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs" 
-              [ngClass]="currentStep() >= 2 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'">2</span>
+      <div class="flex items-center gap-2" [class.text-blue-600]="currentStep() >= 2" [class.dark:text-blue-400]="currentStep() >= 2">
+        <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-soft-surface-sm" 
+              [ngClass]="currentStep() >= 2 ? 'bg-blue-600 text-white font-bold' : 'bg-soft-bg shadow-soft-well-sm text-slate-400'">2</span>
         <span class="hidden sm:inline">Office Location</span>
       </div>
 
-      <div class="h-0.5 flex-1 mx-2 sm:mx-4" [ngClass]="currentStep() >= 3 ? 'bg-indigo-600' : 'bg-slate-200'"></div>
+      <div class="h-0.5 flex-1 mx-2 sm:mx-4" [ngClass]="currentStep() >= 3 ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-800'"></div>
 
-      <div class="flex items-center gap-2" [class.text-indigo-600]="currentStep() >= 3">
-        <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs" 
-              [ngClass]="currentStep() >= 3 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'">3</span>
+      <div class="flex items-center gap-2" [class.text-blue-600]="currentStep() >= 3" [class.dark:text-blue-400]="currentStep() >= 3">
+        <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-soft-surface-sm" 
+              [ngClass]="currentStep() >= 3 ? 'bg-blue-600 text-white font-bold' : 'bg-soft-bg shadow-soft-well-sm text-slate-400'">3</span>
         <span class="hidden sm:inline">Timings</span>
       </div>
 
-      <div class="h-0.5 flex-1 mx-2 sm:mx-4" [ngClass]="currentStep() >= 4 ? 'bg-indigo-600' : 'bg-slate-200'"></div>
+      <div class="h-0.5 flex-1 mx-2 sm:mx-4" [ngClass]="currentStep() >= 4 ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-800'"></div>
 
-      <div class="flex items-center gap-2" [class.text-indigo-600]="currentStep() >= 4">
-        <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs" 
-              [ngClass]="currentStep() >= 4 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'">4</span>
+      <div class="flex items-center gap-2" [class.text-blue-600]="currentStep() >= 4" [class.dark:text-blue-400]="currentStep() >= 4">
+        <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-soft-surface-sm" 
+              [ngClass]="currentStep() >= 4 ? 'bg-blue-600 text-white font-bold' : 'bg-soft-bg shadow-soft-well-sm text-slate-400'">4</span>
         <span class="hidden sm:inline">Launch</span>
       </div>
     </div>
 
-    <!-- Wizard Form Card -->
-    <div class="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-xl relative">
+    <!-- Wizard Form Card in Soft UI Surface -->
+    <div class="surface !p-6 sm:!p-10 shadow-soft-surface-lg relative">
       <form [formGroup]="setupForm" class="space-y-6">
 
         <!-- STEP 1: Admin Account -->
         <div *ngIf="currentStep() === 1" class="space-y-5 animate-in fade-in">
-          <div class="border-b border-slate-100 pb-3">
-            <h2 class="text-xl font-bold text-slate-900">Step 1: Create Administrator Account</h2>
-            <p class="text-xs text-slate-500">This account will have full access to manage employees, policies, and approvals.</p>
+          <div class="border-b border-slate-200/60 dark:border-slate-800 pb-3">
+            <h2 class="text-xl font-bold text-[#1F2937] dark:text-[#f8fafc]">Step 1: Create Administrator Account</h2>
+            <p class="text-xs text-slate-400">This account will have full access to manage employees, policies, and approvals.</p>
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Your Full Name</label>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Your Full Name</label>
             <mat-form-field appearance="outline" class="w-full">
               <input matInput formControlName="adminName" placeholder="e.g. John Doe">
               <mat-error *ngIf="setupForm.get('adminName')?.hasError('required')">Name is required</mat-error>
@@ -66,7 +66,7 @@
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Work Email</label>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Work Email</label>
             <mat-form-field appearance="outline" class="w-full">
               <input matInput type="email" formControlName="adminEmail" placeholder="admin@company.com">
               <mat-error *ngIf="setupForm.get('adminEmail')?.hasError('required')">Email is required</mat-error>
@@ -75,7 +75,7 @@
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Password</label>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Password</label>
             <mat-form-field appearance="outline" class="w-full">
               <input matInput type="password" formControlName="adminPassword" placeholder="Minimum 6 characters">
               <mat-error *ngIf="setupForm.get('adminPassword')?.hasError('required')">Password is required</mat-error>
@@ -86,155 +86,139 @@
 
         <!-- STEP 2: Office & Geofence -->
         <div *ngIf="currentStep() === 2" class="space-y-5 animate-in fade-in">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800 pb-3">
             <div>
-              <h2 class="text-xl font-bold text-slate-900">Step 2: Office Geofence</h2>
-              <p class="text-xs text-slate-500">Specify your main office coordinates for location-verified punch ins.</p>
+              <h2 class="text-xl font-bold text-[#1F2937] dark:text-[#f8fafc]">Step 2: Office Geofence</h2>
+              <p class="text-xs text-slate-400">Specify your main office coordinates for location-verified punch ins.</p>
             </div>
 
             <button 
-              mat-stroked-button 
               type="button" 
               (click)="useCurrentLocation()"
               [disabled]="isLoadingLocation()"
-              class="!rounded-xl self-start">
+              class="soft-btn !py-2 !px-4 text-xs font-semibold text-blue-600 dark:text-blue-400 self-start">
               <mat-spinner *ngIf="isLoadingLocation()" diameter="16" class="mr-1"></mat-spinner>
-              <mat-icon *ngIf="!isLoadingLocation()" class="text-indigo-600 mr-1">my_location</mat-icon>
+              <mat-icon *ngIf="!isLoadingLocation()" class="mr-1 !w-4 !h-4 !text-[18px]">my_location</mat-icon>
               <span>Use Current Location</span>
             </button>
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Office Name</label>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Office Name</label>
             <mat-form-field appearance="outline" class="w-full">
-              <input matInput formControlName="officeName" placeholder="e.g. Head Office, Mumbai Campus">
+              <input matInput formControlName="officeName" placeholder="e.g. Headquarters / Mumbai Office">
             </mat-form-field>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Latitude</label>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Latitude</label>
               <mat-form-field appearance="outline" class="w-full">
-                <input matInput type="number" step="0.0001" formControlName="officeLat">
+                <input matInput type="number" step="0.0001" formControlName="officeLat" placeholder="e.g. 19.0760">
               </mat-form-field>
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Longitude</label>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Longitude</label>
               <mat-form-field appearance="outline" class="w-full">
-                <input matInput type="number" step="0.0001" formControlName="officeLng">
+                <input matInput type="number" step="0.0001" formControlName="officeLng" placeholder="e.g. 72.8777">
               </mat-form-field>
             </div>
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
               Geofence Radius (Meters)
             </label>
             <mat-form-field appearance="outline" class="w-full">
-              <input matInput type="number" step="20" formControlName="radiusM">
+              <input matInput type="number" step="10" formControlName="radiusM" placeholder="e.g. 200">
             </mat-form-field>
-            <p class="text-xs text-slate-500 -mt-2">
+            <p class="text-xs text-[#4B5563] dark:text-[#94a3b8] -mt-2">
               Recommended: 150-200 meters to accommodate laptop and mobile GPS drift.
             </p>
           </div>
         </div>
 
-        <!-- STEP 3: Timings & Holidays -->
+        <!-- STEP 3: Timings -->
         <div *ngIf="currentStep() === 3" class="space-y-5 animate-in fade-in">
-          <div class="border-b border-slate-100 pb-3">
-            <h2 class="text-xl font-bold text-slate-900">Step 3: Work Timings & Holidays</h2>
-            <p class="text-xs text-slate-500">Configure standard operating hours and holiday lists.</p>
+          <div class="border-b border-slate-200/60 dark:border-slate-800 pb-3">
+            <h2 class="text-xl font-bold text-[#1F2937] dark:text-[#f8fafc]">Step 3: Work Timings</h2>
+            <p class="text-xs text-slate-400">Configure standard operating hours and arrival grace period.</p>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Start Time</label>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Start Time</label>
               <mat-form-field appearance="outline" class="w-full">
                 <input matInput type="time" formControlName="officeStart">
+                <mat-error *ngIf="setupForm.get('officeStart')?.hasError('required')">Start time is required</mat-error>
               </mat-form-field>
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">End Time</label>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">End Time</label>
               <mat-form-field appearance="outline" class="w-full">
-                <input matInput type="time" formControlName="officeEnd">
+                <input matInput type="time" [min]="setupForm.get('officeStart')?.value" formControlName="officeEnd">
+                <mat-error *ngIf="setupForm.get('officeEnd')?.hasError('required')">End time is required</mat-error>
+                <mat-error *ngIf="setupForm.get('officeEnd')?.hasError('endBeforeStart')">End time must be after start time</mat-error>
               </mat-form-field>
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Grace Period (Min)</label>
+              <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Grace Period (Min)</label>
               <mat-form-field appearance="outline" class="w-full">
-                <input matInput type="number" formControlName="graceMinutes">
+                <input matInput type="number" formControlName="graceMinutes" placeholder="e.g. 10">
               </mat-form-field>
             </div>
-          </div>
-
-          <div class="p-4 rounded-2xl bg-indigo-50/80 border border-indigo-100">
-            <mat-checkbox formControlName="seedHolidays" color="primary">
-              <span class="text-xs sm:text-sm font-semibold text-slate-800">
-                Pre-populate Indian National Holidays for current year
-              </span>
-            </mat-checkbox>
-            <p class="text-xs text-slate-500 pl-7 mt-0.5">
-              Includes Republic Day, Independence Day, Gandhi Jayanti, Diwali, Holi, and more.
-            </p>
           </div>
         </div>
 
         <!-- STEP 4: Review & Launch -->
         <div *ngIf="currentStep() === 4" class="space-y-5 animate-in fade-in">
-          <div class="border-b border-slate-100 pb-3">
-            <h2 class="text-xl font-bold text-slate-900">Step 4: Review & Initialize</h2>
-            <p class="text-xs text-slate-500">Review your settings before launching your enterprise attendance workspace.</p>
+          <div class="border-b border-slate-200/60 dark:border-slate-800 pb-3">
+            <h2 class="text-xl font-bold text-[#1F2937] dark:text-[#f8fafc]">Step 4: Review & Initialize</h2>
+            <p class="text-xs text-slate-400">Review your settings before launching your enterprise attendance workspace.</p>
           </div>
 
-          <div class="space-y-3 bg-slate-50 p-5 rounded-2xl border border-slate-200/80 text-sm">
+          <div class="space-y-3 bg-soft-bg shadow-soft-well-sm p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800 text-sm">
             <div class="flex justify-between">
-              <span class="text-slate-500">Admin Name:</span>
-              <span class="font-bold text-slate-900">{{ setupForm.get('adminName')?.value }}</span>
+              <span class="text-[#4B5563] dark:text-[#94a3b8]">Admin Name:</span>
+              <span class="font-bold text-[#1F2937] dark:text-[#f8fafc]">{{ setupForm.get('adminName')?.value }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-slate-500">Admin Email:</span>
-              <span class="font-bold text-slate-900">{{ setupForm.get('adminEmail')?.value }}</span>
+              <span class="text-[#4B5563] dark:text-[#94a3b8]">Admin Email:</span>
+              <span class="font-bold text-[#1F2937] dark:text-[#f8fafc]">{{ setupForm.get('adminEmail')?.value }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-slate-500">Office Name:</span>
-              <span class="font-bold text-slate-900">{{ setupForm.get('officeName')?.value }}</span>
+              <span class="text-[#4B5563] dark:text-[#94a3b8]">Office Name:</span>
+              <span class="font-bold text-[#1F2937] dark:text-[#f8fafc]">{{ setupForm.get('officeName')?.value }}</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-slate-500">Geofence Radius:</span>
-              <span class="font-bold text-slate-900">{{ setupForm.get('radiusM')?.value }} meters</span>
+              <span class="text-[#4B5563] dark:text-[#94a3b8]">Geofence Radius:</span>
+              <span class="font-bold text-[#1F2937] dark:text-[#f8fafc]">{{ setupForm.get('radiusM')?.value }} meters</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-slate-500">Office Timings:</span>
-              <span class="font-bold text-slate-900">
+              <span class="text-[#4B5563] dark:text-[#94a3b8]">Office Timings:</span>
+              <span class="font-bold text-[#1F2937] dark:text-[#f8fafc]">
                 {{ setupForm.get('officeStart')?.value }} &rarr; {{ setupForm.get('officeEnd')?.value }} 
                 ({{ setupForm.get('graceMinutes')?.value }} min grace)
               </span>
             </div>
-            <div class="flex justify-between">
-              <span class="text-slate-500">National Holidays:</span>
-              <span class="font-bold text-emerald-600">
-                {{ setupForm.get('seedHolidays')?.value ? 'Included' : 'Skip' }}
-              </span>
-            </div>
           </div>
 
-          <p class="text-xs text-slate-500">
-            Once setup is complete, you will be automatically logged in as Administrator. You can immediately begin creating Manager accounts and inviting employees!
+          <p class="text-xs text-[#4B5563] dark:text-[#94a3b8]">
+            Once setup is complete, you will be automatically logged in as Administrator. All employees, managers, holidays, and policies will be managed by you.
           </p>
         </div>
 
         <!-- Wizard Navigation Controls -->
-        <div class="flex items-center justify-between pt-6 border-t border-slate-100">
+        <div class="flex items-center justify-between pt-6 border-t border-slate-200/60 dark:border-slate-800">
           <div>
             <button 
               *ngIf="currentStep() > 1" 
-              mat-button 
               type="button" 
               (click)="prevStep()"
-              class="!rounded-xl">
+              class="soft-btn !py-2 !px-5 text-xs font-semibold text-slate-600">
               Back
             </button>
           </div>
@@ -242,23 +226,19 @@
           <div class="flex items-center gap-3">
             <button 
               *ngIf="currentStep() < 4" 
-              mat-flat-button 
-              color="primary" 
               type="button" 
               (click)="nextStep()"
-              class="!h-11 !px-6 !rounded-xl !bg-indigo-600">
+              class="soft-btn-primary !h-11 !px-6 text-xs font-bold">
               Continue
             </button>
 
             <button 
               *ngIf="currentStep() === 4" 
-              mat-flat-button 
-              color="primary" 
               type="button" 
               [disabled]="isSubmitting()"
               (click)="completeSetup()"
-              class="!h-12 !px-8 !rounded-xl !bg-emerald-600 hover:!bg-emerald-700 shadow-lg shadow-emerald-100 text-base font-bold">
-              <mat-spinner *ngIf="isSubmitting()" diameter="18" class="mr-2"></mat-spinner>
+              class="soft-btn-primary !h-12 !px-8 text-sm font-bold !bg-emerald-600 hover:!bg-emerald-700 shadow-emerald-200">
+              <mat-spinner *ngIf="isSubmitting()" diameter="18" class="mr-2 !text-white"></mat-spinner>
               <span>{{ isSubmitting() ? 'Setting up system...' : 'Launch Punctual' }}</span>
             </button>
           </div>

@@ -104,12 +104,12 @@ export class DashboardComponent {
 
   remainingLeaveDays = computed(() => {
     const bal = this.leaveBalance();
-    if (!bal || !bal.balances?.unified) return 18;
+    if (!bal || !bal.balances?.unified) return 0;
     return Math.max(0, bal.balances.unified.allotted - bal.balances.unified.used);
   });
 
   allottedLeaveDays = computed(() => {
-    return this.leaveBalance()?.balances?.unified?.allotted || 18;
+    return this.leaveBalance()?.balances?.unified?.allotted || 0;
   });
 
   leaveProgressPercentage = computed(() => {
