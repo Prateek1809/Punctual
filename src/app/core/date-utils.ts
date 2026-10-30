@@ -106,3 +106,24 @@ export function calculateWorkingDays(
 
   return workingDays;
 }
+
+/**
+ * Returns an array of YYYY-MM-DD date strings between startStr and endStr inclusive.
+ */
+export function getDatesInRange(startStr: string, endStr: string): string[] {
+  const dates: string[] = [];
+  if (!startStr || !endStr) return dates;
+  const [sy, sm, sd] = startStr.split('-').map(Number);
+  const [ey, em, ed] = endStr.split('-').map(Number);
+  const curr = new Date(sy, sm - 1, sd);
+  const end = new Date(ey, em - 1, ed);
+  while (curr <= end) {
+    const y = curr.getFullYear();
+    const m = String(curr.getMonth() + 1).padStart(2, '0');
+    const d = String(curr.getDate()).padStart(2, '0');
+    dates.push(`${y}-${m}-${d}`);
+    curr.setDate(curr.getDate() + 1);
+  }
+  return dates;
+}
+

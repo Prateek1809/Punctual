@@ -450,3 +450,104 @@ textarea.soft-input:focus {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ======================================================== */
+/* ANGULAR MATERIAL DATEPICKER CUSTOM LEAVE STYLING         */
+/* ======================================================== */
+
+/* Approved Leave Dates: Marked with Green border, background & badge */
+.mat-calendar-body-cell.mat-calendar-approved-leave .mat-calendar-body-cell-content {
+  background-color: #dcfce7 !important;
+  color: #15803d !important;
+  font-weight: 800 !important;
+  border: 1.5px solid #22c55e !important;
+  border-radius: 9999px !important;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(34, 197, 94, 0.25);
+}
+
+.mat-calendar-body-cell.mat-calendar-approved-leave.mat-calendar-body-disabled .mat-calendar-body-cell-content {
+  background-color: #ecfdf5 !important;
+  color: #16a34a !important;
+  opacity: 0.9 !important;
+  cursor: not-allowed !important;
+}
+
+.mat-calendar-body-cell.mat-calendar-approved-leave .mat-calendar-body-cell-content::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background-color: #16a34a;
+}
+
+.dark .mat-calendar-body-cell.mat-calendar-approved-leave .mat-calendar-body-cell-content {
+  background-color: rgba(34, 197, 94, 0.22) !important;
+  color: #4ade80 !important;
+  border-color: #22c55e !important;
+}
+
+.dark .mat-calendar-body-cell.mat-calendar-approved-leave.mat-calendar-body-disabled .mat-calendar-body-cell-content {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+  color: #86efac !important;
+  opacity: 0.9 !important;
+}
+
+.dark .mat-calendar-body-cell.mat-calendar-approved-leave .mat-calendar-body-cell-content::after {
+  background-color: #4ade80;
+}
+
+/* Pending Leave Dates: Marked with Amber border & background */
+.mat-calendar-body-cell.mat-calendar-pending-leave .mat-calendar-body-cell-content {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+  font-weight: 700 !important;
+  border: 1.5px dashed #f59e0b !important;
+  border-radius: 9999px !important;
+  position: relative;
+}
+
+.mat-calendar-body-cell.mat-calendar-pending-leave.mat-calendar-body-disabled .mat-calendar-body-cell-content {
+  opacity: 0.85 !important;
+  cursor: not-allowed !important;
+}
+
+.mat-calendar-body-cell.mat-calendar-pending-leave .mat-calendar-body-cell-content::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background-color: #d97706;
+}
+
+.dark .mat-calendar-body-cell.mat-calendar-pending-leave .mat-calendar-body-cell-content {
+  background-color: rgba(245, 158, 11, 0.22) !important;
+  color: #fbbf24 !important;
+  border-color: #f59e0b !important;
+}
+
+/* Holiday Dates: Dot indicator */
+.mat-calendar-body-cell.mat-calendar-holiday .mat-calendar-body-cell-content {
+  font-weight: 600;
+  position: relative;
+}
+
+.mat-calendar-body-cell.mat-calendar-holiday .mat-calendar-body-cell-content::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background-color: #6366f1;
+}
+

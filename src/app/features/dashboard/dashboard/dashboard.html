@@ -140,21 +140,31 @@
                 <path class="text-slate-200 dark:text-slate-800" stroke-width="3.5" stroke="currentColor" fill="none"
                       d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                 <!-- Foreground Value Circle -->
-                <path class="text-blue-600 dark:text-blue-400 transition-all duration-700 ease-out" stroke-dasharray="100, 100"
+                <path [ngClass]="isNegativeLeave() ? 'text-rose-500' : 'text-blue-600 dark:text-blue-400'"
+                      class="transition-all duration-700 ease-out" stroke-dasharray="100, 100"
                       [attr.stroke-dashoffset]="100 - leaveProgressPercentage()"
                       stroke-linecap="round" stroke-width="3.5" stroke="currentColor" fill="none"
                       d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
               </svg>
               <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span class="text-xl font-extrabold text-[#1F2937] dark:text-[#f8fafc] leading-none">{{ remainingLeaveDays() }}</span>
-                <span class="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Days</span>
+                <span class="text-xl font-extrabold leading-none"
+                      [ngClass]="isNegativeLeave() ? 'text-rose-600 dark:text-rose-400' : 'text-[#1F2937] dark:text-[#f8fafc]'">
+                  {{ remainingLeaveDays() }}
+                </span>
+                <span class="text-[10px] font-bold uppercase mt-0.5"
+                      [ngClass]="isNegativeLeave() ? 'text-rose-500' : 'text-slate-400'">
+                  {{ isNegativeLeave() ? 'Deficit' : 'Days' }}
+                </span>
               </div>
             </div>
 
             <div class="space-y-1.5 flex-1">
-              <div class="text-base font-bold text-[#1F2937] dark:text-[#f8fafc]">
+              <div class="text-base font-bold"
+                   [ngClass]="isNegativeLeave() ? 'text-rose-600 dark:text-rose-400' : 'text-[#1F2937] dark:text-[#f8fafc]'">
                 <ng-container *ngIf="allottedLeaveDays() > 0; else noLeavesAllotted">
-                  {{ remainingLeaveDays() }} of {{ allottedLeaveDays() }} Days Left
+                  {{ remainingLeaveDays() }} of {{ allottedLeaveDays() }} Days 
+                  <span *ngIf="isNegativeLeave()" class="text-xs font-black uppercase text-rose-600 dark:text-rose-400">(Negative)</span>
+                  <span *ngIf="!isNegativeLeave()">Left</span>
                 </ng-container>
                 <ng-template #noLeavesAllotted>
                   No Leaves Allocated Yet

@@ -15,12 +15,12 @@ import { Functions, httpsCallable } from '@angular/fire/functions';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../core/auth.service';
 import { SettingsService } from '../../../core/settings.service';
-import { AttendanceRecord, RegularizationRequest, Holiday, AttendanceStatus } from '../../../core/models';
+import { AttendanceRecord, RegularizationRequest, Holiday, AttendanceStatus, LeaveRequest } from '../../../core/models';
 import { getISTDateString, formatTime12h, formatDuration } from '../../../core/date-utils';
 import { StatusChipComponent } from '../../../shared/status-chip/status-chip.component';
-import { switchMap, of, map } from 'rxjs';
+import { switchMap, of, map, Observable } from 'rxjs';
 
-interface DayGridItem {
+export interface DayGridItem {
   dayNumber: number;
   dateStr: string;
   isCurrentMonth: boolean;
@@ -28,8 +28,13 @@ interface DayGridItem {
   isHoliday: boolean;
   holidayName?: string;
   isFuture: boolean;
+  isToday: boolean;
   attendance?: AttendanceRecord;
+  leaveRequest?: LeaveRequest;
   status: AttendanceStatus | 'holiday' | 'weekend' | 'future' | 'not_marked';
+  checkInFormatted?: string;
+  checkOutFormatted?: string;
+  workedFormatted?: string;
 }
 
 @Component({
@@ -67,8 +72,9 @@ export class MyAttendanceComponent {
   selectedDay = signal<DayGridItem | null>(null);
   showRegularizationModal = signal(false);
   isSubmittingReg = signal(false);
+  activeLegendFilter = signal<string | null>(null);
 
-  years = [2025, 2026, 2027];
+  years = [2024, 2025, 2026, 2027, 2028];
   months = [
     { value: 1, name: 'January' },
     { value: 2, name: 'February' },
@@ -98,6 +104,11 @@ export class MyAttendanceComponent {
     return `${this.selectedYear()}-${m}`;
   });
 
+  currentMonthName = computed(() => {
+    const m = this.months.find(x => x.value === this.selectedMonth());
+    return m ? m.name : '';
+  });
+
   monthlyRecords$ = this.auth.userProfile$.pipe(
     switchMap(profile => {
       if (!profile) return of([]);
@@ -123,6 +134,20 @@ export class MyAttendanceComponent {
     }
     return map;
   });
+
+  // Approved Leaves for Employee
+  myApprovedLeaves$ = this.auth.userProfile$.pipe(
+    switchMap(profile => {
+      if (!profile) return of([]);
+      const q = query(
+        collection(this.firestore, 'leaveRequests'),
+        where('uid', '==', profile.uid),
+        where('status', '==', 'approved')
+      );
+      return collectionData(q, { idField: 'id' }) as Observable<LeaveRequest[]>;
+    })
+  );
+  myApprovedLeaves = toSignal(this.myApprovedLeaves$, { initialValue: [] });
 
   // Regularizations
   regularizations$ = this.auth.userProfile$.pipe(
@@ -183,6 +208,7 @@ export class MyAttendanceComponent {
         isWeekend: false,
         isHoliday: false,
         isFuture: false,
+        isToday: false,
         status: 'not_marked'
       });
     }
@@ -195,18 +221,22 @@ export class MyAttendanceComponent {
 
       const dayStr = String(day).padStart(2, '0');
       const dateStr = `${this.monthPrefix()}-${dayStr}`;
+      const isToday = dateStr === this.todayDateStr;
       const isFuture = dateStr > this.todayDateStr;
 
       const isHoliday = this.holidaysMap().has(dateStr);
       const holidayName = this.holidaysMap().get(dateStr);
 
       const att = this.attendanceMap().get(dateStr);
+      const activeLeave = this.myApprovedLeaves().find(l => l.startDate <= dateStr && l.endDate >= dateStr);
 
       let status: DayGridItem['status'] = 'not_marked';
       if (isFuture) {
         status = 'future';
       } else if (isHoliday) {
         status = 'holiday';
+      } else if (activeLeave) {
+        status = 'leave';
       } else if (isWeekend) {
         status = 'weekend';
       } else if (att) {
@@ -223,8 +253,13 @@ export class MyAttendanceComponent {
         isHoliday,
         holidayName,
         isFuture,
+        isToday,
         attendance: att,
-        status
+        leaveRequest: activeLeave,
+        status,
+        checkInFormatted: att?.checkIn ? formatTime12h(att.checkIn) : undefined,
+        checkOutFormatted: att?.checkOut ? formatTime12h(att.checkOut) : undefined,
+        workedFormatted: att?.workedMinutes ? formatDuration(att.workedMinutes) : undefined
       });
     }
 
@@ -238,10 +273,17 @@ export class MyAttendanceComponent {
     let halfDayCount = 0;
     let absentCount = 0;
     let leaveCount = 0;
+    let holidayCount = 0;
+    let weekendCount = 0;
     let totalWorkedMinutes = 0;
 
     for (const day of this.calendarDays()) {
-      if (!day.isCurrentMonth || day.isFuture) continue;
+      if (!day.isCurrentMonth) continue;
+
+      if (day.isHoliday) holidayCount++;
+      else if (day.isWeekend) weekendCount++;
+
+      if (day.isFuture) continue;
 
       if (day.status === 'present') presentCount++;
       else if (day.status === 'late') {
@@ -256,35 +298,55 @@ export class MyAttendanceComponent {
       }
     }
 
+    const totalHoursNum = totalWorkedMinutes / 60;
+    const avgHours = presentCount > 0 ? (totalHoursNum / presentCount).toFixed(1) : '0.0';
+
     return {
       present: presentCount,
       late: lateCount,
       halfDay: halfDayCount,
       absent: absentCount,
       leave: leaveCount,
-      totalHours: (totalWorkedMinutes / 60).toFixed(1)
+      holidays: holidayCount,
+      weekends: weekendCount,
+      totalHours: totalHoursNum.toFixed(1),
+      avgHoursPerDay: `${avgHours}h`
     };
   });
 
-  getDayTileBg(day: DayGridItem): string {
-    if (!day.isCurrentMonth) return 'invisible';
-    if (day.isFuture) return 'bg-slate-50 text-slate-300 border-slate-100 cursor-default';
-    if (day.isHoliday) return 'bg-purple-100 text-purple-800 border-purple-200';
-    if (day.isWeekend) return 'bg-slate-100 text-slate-400 border-slate-200';
+  prevMonth() {
+    if (this.selectedMonth() === 1) {
+      this.selectedMonth.set(12);
+      this.selectedYear.update(y => y - 1);
+    } else {
+      this.selectedMonth.update(m => m - 1);
+    }
+  }
 
-    switch (day.status) {
-      case 'present':
-        return 'bg-emerald-500 text-white border-emerald-600 shadow-sm';
-      case 'late':
-        return 'bg-amber-400 text-amber-950 border-amber-500 shadow-sm';
-      case 'half-day':
-        return 'bg-orange-400 text-white border-orange-500 shadow-sm';
-      case 'leave':
-        return 'bg-blue-500 text-white border-blue-600 shadow-sm';
-      case 'absent':
-        return 'bg-rose-500 text-white border-rose-600 shadow-sm';
-      default:
-        return 'bg-slate-100 text-slate-500 border-slate-200';
+  nextMonth() {
+    if (this.selectedMonth() === 12) {
+      this.selectedMonth.set(1);
+      this.selectedYear.update(y => y + 1);
+    } else {
+      this.selectedMonth.update(m => m + 1);
+    }
+  }
+
+  goToToday() {
+    const d = new Date();
+    this.selectedYear.set(d.getFullYear());
+    this.selectedMonth.set(d.getMonth() + 1);
+    const todayItem = this.calendarDays().find(x => x.dateStr === this.todayDateStr);
+    if (todayItem) {
+      this.selectDay(todayItem);
+    }
+  }
+
+  toggleLegendFilter(status: string) {
+    if (this.activeLegendFilter() === status) {
+      this.activeLegendFilter.set(null);
+    } else {
+      this.activeLegendFilter.set(status);
     }
   }
 
@@ -297,8 +359,8 @@ export class MyAttendanceComponent {
     this.selectedDay.set(null);
   }
 
-  formatTime(iso?: string): string {
-    return formatTime12h(iso);
+  formatTime(iso?: string | null): string {
+    return formatTime12h(iso || undefined);
   }
 
   formatMins(m?: number): string {

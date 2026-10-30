@@ -105,8 +105,10 @@ export class DashboardComponent {
   remainingLeaveDays = computed(() => {
     const bal = this.leaveBalance();
     if (!bal || !bal.balances?.unified) return 0;
-    return Math.max(0, bal.balances.unified.allotted - bal.balances.unified.used);
+    return Number((bal.balances.unified.allotted - bal.balances.unified.used).toFixed(1));
   });
+
+  isNegativeLeave = computed(() => this.remainingLeaveDays() < 0);
 
   allottedLeaveDays = computed(() => {
     return this.leaveBalance()?.balances?.unified?.allotted || 0;
@@ -115,7 +117,7 @@ export class DashboardComponent {
   leaveProgressPercentage = computed(() => {
     const remaining = this.remainingLeaveDays();
     const total = this.allottedLeaveDays();
-    return total > 0 ? Math.round((remaining / total) * 100) : 0;
+    return total > 0 ? Math.max(0, Math.round((remaining / total) * 100)) : 0;
   });
 
   // 4. Upcoming Holiday

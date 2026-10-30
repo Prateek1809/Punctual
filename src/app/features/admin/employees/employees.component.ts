@@ -15,6 +15,7 @@ import { Functions, httpsCallable } from '@angular/fire/functions';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UserProfile, UserRole } from '../../../core/models';
 import { AuthService } from '../../../core/auth.service';
+import { ConfirmDialogService } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { Observable } from 'rxjs';
 
 @Component({
@@ -41,6 +42,7 @@ export class EmployeesComponent {
   private functions = inject(Functions);
   private snackBar = inject(MatSnackBar);
   public auth = inject(AuthService);
+  private confirmService = inject(ConfirmDialogService);
 
   searchQuery = signal('');
   roleFilter = signal<string>('all');
@@ -207,7 +209,16 @@ export class EmployeesComponent {
 
   async toggleUserActive(user: UserProfile) {
     const action = user.isActive ? 'deactivate' : 'activate';
-    if (!confirm(`Are you sure you want to ${action} ${user.name}?`)) return;
+    const isDestructive = user.isActive;
+    const confirmed = await this.confirmService.confirm({
+      title: `${user.isActive ? 'Deactivate' : 'Activate'} Employee`,
+      message: `Are you sure you want to ${action} ${user.name}? ${user.isActive ? 'They will no longer be able to log in or mark attendance.' : 'Their account access will be restored.'}`,
+      confirmText: user.isActive ? 'Yes, Deactivate' : 'Yes, Activate',
+      cancelText: 'Cancel',
+      isDestructive,
+      icon: user.isActive ? 'person_off' : 'person'
+    });
+    if (!confirmed) return;
 
     this.togglingUid.set(user.uid);
     try {

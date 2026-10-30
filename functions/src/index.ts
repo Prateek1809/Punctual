@@ -505,7 +505,7 @@ export const punchOut = onCall(async (request) => {
 });
 
 // -------------------------------------------------------------
-// 3. Leave Actions: approveLeave, rejectLeave, cancelLeave
+// 3. Leave Actions: approveLeave, updateLeaveDetails, rejectLeave, cancelLeave
 // -------------------------------------------------------------
 export const approveLeave = onCall(async (request) => {
   const context = request;
@@ -518,7 +518,16 @@ export const approveLeave = onCall(async (request) => {
     throw new HttpsError('permission-denied', 'Managers and Admins only');
   }
 
-  const { requestId, comment = '' } = data;
+  const {
+    requestId,
+    comment = '',
+    startDate,
+    endDate,
+    startTime = null,
+    isHalfDay,
+    halfDayType = null,
+    days,
+  } = data;
   if (!requestId) {
     throw new HttpsError('invalid-argument', 'Missing requestId');
   }
@@ -534,7 +543,14 @@ export const approveLeave = onCall(async (request) => {
       throw new HttpsError('failed-precondition', 'Leave is not pending');
     }
 
-    const year = leaveData.startDate.split('-')[0];
+    const finalStartDate = startDate || leaveData.startDate;
+    const finalEndDate = endDate || leaveData.endDate;
+    const finalStartTime = startTime !== undefined ? (startTime || null) : (leaveData.startTime || null);
+    const finalIsHalfDay = isHalfDay !== undefined ? !!isHalfDay : !!leaveData.isHalfDay;
+    const finalHalfDayType = halfDayType !== undefined ? halfDayType : (leaveData.halfDayType || null);
+    const daysRequested = Number(days ?? leaveData.days ?? (finalIsHalfDay ? 0.5 : 1));
+
+    const year = finalStartDate.split('-')[0];
     const balanceRef = db.collection('leaveBalances').doc(`${leaveData.uid}_${year}`);
     const balanceDoc = await transaction.get(balanceRef);
 
@@ -548,26 +564,33 @@ export const approveLeave = onCall(async (request) => {
     }
 
     const currentUsed = balanceData.balances?.unified?.used || 0;
-    const currentAllotted = balanceData.balances?.unified?.allotted || 18;
-    const daysRequested = Number(leaveData.days || 1);
 
-    if (currentUsed + daysRequested > currentAllotted) {
-      throw new HttpsError(
-        'failed-precondition',
-        `Insufficient leave balance. Remaining: ${currentAllotted - currentUsed}, Requested: ${daysRequested}`
-      );
-    }
-
-    balanceData.balances.unified.used = currentUsed + daysRequested;
+    // Negative leave balances are allowed (advance/overdraft leaves)
+    balanceData.balances.unified.used = Number((currentUsed + daysRequested).toFixed(1));
 
     transaction.set(balanceRef, balanceData, { merge: true });
-    transaction.update(leaveRef, {
+
+    const updateData: Record<string, any> = {
       status: 'approved',
+      startDate: finalStartDate,
+      endDate: finalEndDate,
+      startTime: finalStartTime,
+      isHalfDay: finalIsHalfDay,
+      halfDayType: finalHalfDayType,
+      days: daysRequested,
       decidedBy: context.auth!.uid,
       decidedByName: context.auth!.token.name || context.auth!.token.email || 'Manager',
       managerComment: comment,
       decidedAt: new Date().toISOString(),
-    });
+    };
+
+    if (startDate || endDate || startTime !== undefined || isHalfDay !== undefined || days !== undefined) {
+      updateData.editedBy = context.auth!.uid;
+      updateData.editedByName = context.auth!.token.name || context.auth!.token.email || 'Manager';
+      updateData.editedAt = new Date().toISOString();
+    }
+
+    transaction.update(leaveRef, updateData);
 
     // Write audit log
     const auditRef = db.collection('auditLogs').doc();
@@ -576,8 +599,152 @@ export const approveLeave = onCall(async (request) => {
       actorName: context.auth!.token.name || context.auth!.token.email || 'Manager',
       action: 'APPROVE_LEAVE',
       targetId: requestId,
-      before: { status: 'pending' },
-      after: { status: 'approved', managerComment: comment, days: daysRequested },
+      before: {
+        status: 'pending',
+        startDate: leaveData.startDate,
+        endDate: leaveData.endDate,
+        startTime: leaveData.startTime || null,
+        days: leaveData.days,
+      },
+      after: {
+        status: 'approved',
+        managerComment: comment,
+        startDate: finalStartDate,
+        endDate: finalEndDate,
+        startTime: finalStartTime,
+        days: daysRequested,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    return { success: true };
+  });
+});
+
+export const updateLeaveDetails = onCall(async (request) => {
+  const context = request;
+  const data = request.data || {};
+
+  if (
+    !context.auth ||
+    (context.auth.token.role !== 'manager' && context.auth.token.role !== 'admin')
+  ) {
+    throw new HttpsError('permission-denied', 'Managers and Admins only');
+  }
+
+  const {
+    requestId,
+    startDate,
+    endDate,
+    startTime = null,
+    isHalfDay = false,
+    halfDayType = null,
+    days,
+    managerComment = '',
+    approveAfterUpdate = false,
+  } = data;
+
+  if (!requestId || !startDate || !endDate) {
+    throw new HttpsError('invalid-argument', 'Missing requestId, startDate or endDate');
+  }
+
+  if (startDate > endDate) {
+    throw new HttpsError('invalid-argument', 'Start date cannot be after end date');
+  }
+
+  const leaveRef = db.collection('leaveRequests').doc(requestId);
+
+  return await db.runTransaction(async (transaction: Transaction) => {
+    const doc = await transaction.get(leaveRef);
+    if (!doc.exists) throw new HttpsError('not-found', 'Leave request not found');
+
+    const leaveData = doc.data()!;
+    const oldStatus = leaveData.status;
+
+    if (oldStatus === 'cancelled' || oldStatus === 'rejected') {
+      throw new HttpsError('failed-precondition', `Cannot edit a ${oldStatus} leave request`);
+    }
+
+    const calculatedDays = Number(days ?? (isHalfDay ? 0.5 : 1));
+    const oldDays = Number(leaveData.days || 1);
+
+    const updatePayload: Record<string, any> = {
+      startDate,
+      endDate,
+      startTime: startTime || null,
+      isHalfDay: !!isHalfDay,
+      halfDayType: halfDayType || null,
+      days: calculatedDays,
+      editedBy: context.auth!.uid,
+      editedByName: context.auth!.token.name || context.auth!.token.email || 'Manager',
+      editedAt: new Date().toISOString(),
+    };
+
+    if (managerComment && managerComment.trim()) {
+      updatePayload.managerComment = managerComment.trim();
+    }
+
+    // If the leave was ALREADY approved, adjust the leave balance by the delta
+    if (oldStatus === 'approved') {
+      const dayDiff = calculatedDays - oldDays;
+      if (dayDiff !== 0) {
+        const year = startDate.split('-')[0];
+        const balanceRef = db.collection('leaveBalances').doc(`${leaveData.uid}_${year}`);
+        const balanceDoc = await transaction.get(balanceRef);
+        let balanceData = balanceDoc.data();
+        if (!balanceData) {
+          balanceData = {
+            uid: leaveData.uid,
+            year,
+            balances: { unified: { allotted: 18, used: 0 } },
+          };
+        }
+        const currentUsed = balanceData.balances?.unified?.used || 0;
+        balanceData.balances.unified.used = Number((currentUsed + dayDiff).toFixed(1));
+        transaction.set(balanceRef, balanceData, { merge: true });
+      }
+    } else if (approveAfterUpdate && oldStatus === 'pending') {
+      // Approve immediately with new details
+      const year = startDate.split('-')[0];
+      const balanceRef = db.collection('leaveBalances').doc(`${leaveData.uid}_${year}`);
+      const balanceDoc = await transaction.get(balanceRef);
+      let balanceData = balanceDoc.data();
+      if (!balanceData) {
+        balanceData = {
+          uid: leaveData.uid,
+          year,
+          balances: { unified: { allotted: 18, used: 0 } },
+        };
+      }
+      const currentUsed = balanceData.balances?.unified?.used || 0;
+      balanceData.balances.unified.used = Number((currentUsed + calculatedDays).toFixed(1));
+      transaction.set(balanceRef, balanceData, { merge: true });
+
+      updatePayload.status = 'approved';
+      updatePayload.decidedBy = context.auth!.uid;
+      updatePayload.decidedByName = context.auth!.token.name || context.auth!.token.email || 'Manager';
+      updatePayload.decidedAt = new Date().toISOString();
+    }
+
+    transaction.update(leaveRef, updatePayload);
+
+    // Write audit log
+    const auditRef = db.collection('auditLogs').doc();
+    transaction.set(auditRef, {
+      actorUid: context.auth!.uid,
+      actorName: context.auth!.token.name || context.auth!.token.email || 'Manager',
+      action: approveAfterUpdate ? 'EDIT_AND_APPROVE_LEAVE' : 'EDIT_LEAVE_DETAILS',
+      targetId: requestId,
+      before: {
+        startDate: leaveData.startDate,
+        endDate: leaveData.endDate,
+        startTime: leaveData.startTime || null,
+        days: oldDays,
+        status: oldStatus,
+      },
+      after: {
+        ...updatePayload,
+      },
       timestamp: new Date().toISOString(),
     });
 
@@ -1002,31 +1169,73 @@ export const nightlyAttendanceJob = onSchedule(
 export const monthlyLeaveAllocation = onSchedule(
   { schedule: '0 0 1 * *', timeZone: 'Asia/Kolkata' },
   async () => {
-    const { dateStr } = getISTDateTime();
-    const year = dateStr.split('-')[0];
+    const { dateStr } = getISTDateTime(); // e.g. "2026-11-01"
+    const [currentYearStr, currentMonthStr] = dateStr.split('-');
+    const currentYear = Number(currentYearStr);
+    const currentMonth = Number(currentMonthStr);
+
+    // Calculate previous month boundaries
+    let prevYear = currentYear;
+    let prevMonth = currentMonth - 1;
+    if (prevMonth === 0) {
+      prevMonth = 12;
+      prevYear = currentYear - 1;
+    }
+
+    const prevMonthStr = String(prevMonth).padStart(2, '0');
+    const prevMonthPrefix = `${prevYear}-${prevMonthStr}`;
+    const prevMonthStart = `${prevMonthPrefix}-01`;
+    const daysInPrevMonth = new Date(prevYear, prevMonth, 0).getDate();
+    const prevMonthEnd = `${prevMonthPrefix}-${String(daysInPrevMonth).padStart(2, '0')}`;
+
+    // Get company settings for monthlyQuota
+    const companyDoc = await db.collection('settings').doc('company').get();
+    const monthlyQuota = Number(companyDoc.data()?.monthlyQuota ?? 1.5);
 
     const usersSnap = await db.collection('users').where('isActive', '==', true).get();
     const batch = db.batch();
 
     for (const userDoc of usersSnap.docs) {
-      if (userDoc.data()?.role !== 'employee') continue;
+      const role = userDoc.data()?.role;
+      if (role === 'admin') continue; // Employees and managers accrue leaves
       const uid = userDoc.id;
-      const balanceRef = db.collection('leaveBalances').doc(`${uid}_${year}`);
+
+      // Check if user took ANY approved leave in the previous month
+      const leavesSnap = await db.collection('leaveRequests')
+        .where('uid', '==', uid)
+        .where('status', '==', 'approved')
+        .get();
+
+      let tookLeaveInPrevMonth = false;
+      for (const leaveDoc of leavesSnap.docs) {
+        const l = leaveDoc.data();
+        if (l.startDate <= prevMonthEnd && l.endDate >= prevMonthStart) {
+          tookLeaveInPrevMonth = true;
+          break;
+        }
+      }
+
+      // Rule: Only add monthly quota if employee did NOT take any leave in that month
+      if (tookLeaveInPrevMonth) {
+        continue;
+      }
+
+      const balanceRef = db.collection('leaveBalances').doc(`${uid}_${currentYearStr}`);
       const balanceDoc = await balanceRef.get();
 
       if (balanceDoc.exists) {
         const data = balanceDoc.data()!;
-        const currentAllotted = data.balances?.unified?.allotted || 0;
+        const currentAllotted = Number(data.balances?.unified?.allotted || 0);
         batch.update(balanceRef, {
-          'balances.unified.allotted': currentAllotted + 1.5,
+          'balances.unified.allotted': Number((currentAllotted + monthlyQuota).toFixed(1)),
         });
       } else {
         batch.set(balanceRef, {
           uid,
-          year,
+          year: currentYearStr,
           balances: {
             unified: {
-              allotted: 1.5,
+              allotted: monthlyQuota,
               used: 0,
             },
           },

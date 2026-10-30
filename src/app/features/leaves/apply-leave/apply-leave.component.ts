@@ -2,7 +2,7 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
-import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDatepickerModule, MatCalendarCellClassFunction } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
@@ -18,8 +18,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../core/auth.service';
 import { SettingsService } from '../../../core/settings.service';
 import { LeaveRequest, LeaveBalance, UserProfile } from '../../../core/models';
-import { getISTDateString, calculateWorkingDays } from '../../../core/date-utils';
+import { getISTDateString, calculateWorkingDays, getDatesInRange, formatTime12h } from '../../../core/date-utils';
 import { StatusChipComponent } from '../../../shared/status-chip/status-chip.component';
+import { ConfirmDialogService } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { switchMap, of, map, catchError } from 'rxjs';
 
 @Component({
@@ -51,6 +52,7 @@ export class ApplyLeaveComponent {
   public auth = inject(AuthService);
   private settingsService = inject(SettingsService);
   private snackBar = inject(MatSnackBar);
+  private confirmService = inject(ConfirmDialogService);
 
   selectedTab = signal(0);
   isSubmitting = signal(false);
@@ -58,6 +60,9 @@ export class ApplyLeaveComponent {
 
   todayDateStr = getISTDateString();
   currentYear = this.todayDateStr.split('-')[0];
+
+  // Current Date object with zeroed time for datepicker [min] restrictions
+  todayDate = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
 
   // 1. Settings & Holidays for Day Calculation
   settings$ = this.settingsService.getSettings().pipe(catchError(() => of(null)));
@@ -68,6 +73,7 @@ export class ApplyLeaveComponent {
 
   holidayDates = computed(() => this.holidays().map(h => h.date));
   weeklyOffs = computed(() => this.settings()?.weeklyOffs || [0, 6]);
+
 
   // 2. User Leave Balance (Gracefully fallback if not allocated yet)
   leaveBalance$ = this.auth.userProfile$.pipe(
@@ -86,11 +92,15 @@ export class ApplyLeaveComponent {
   remainingDays = computed(() => {
     const bal = this.leaveBalance();
     if (bal && bal.balances?.unified) {
-      return Math.max(0, bal.balances.unified.allotted - bal.balances.unified.used);
+      return Number((bal.balances.unified.allotted - bal.balances.unified.used).toFixed(1));
     }
     const quota = this.settings()?.monthlyQuota ?? 1.5;
-    return Number((quota * 12).toFixed(1));
+    const currentMonth = new Date().getMonth() + 1;
+    return Number((quota * currentMonth).toFixed(1));
   });
+
+  isNegativeBalance = computed(() => this.remainingDays() < 0);
+
 
   // 3. User's Own Leaves History
   myLeaves$ = this.auth.userProfile$.pipe(
@@ -135,9 +145,68 @@ export class ApplyLeaveComponent {
   );
   teamLeaves = toSignal(this.teamLeaves$, { initialValue: [] });
 
-  // Form with cross-field validation: End Date must be on or after Start Date
+  // Sets of User's active leaves (Approved and Pending) to mark & block in calendar
+  approvedLeaveDatesSet = computed(() => {
+    const set = new Set<string>();
+    const leaves = this.myLeaves().filter(l => l.status === 'approved');
+    for (const l of leaves) {
+      for (const d of getDatesInRange(l.startDate, l.endDate)) {
+        set.add(d);
+      }
+    }
+    return set;
+  });
+
+  pendingLeaveDatesSet = computed(() => {
+    const set = new Set<string>();
+    const leaves = this.myLeaves().filter(l => l.status === 'pending');
+    for (const l of leaves) {
+      for (const d of getDatesInRange(l.startDate, l.endDate)) {
+        set.add(d);
+      }
+    }
+    return set;
+  });
+
+  // Material Datepicker Cell Class: Marks approved leaves, pending leaves, and holidays
+  dateClass: MatCalendarCellClassFunction<Date> = (cellDate, view) => {
+    if (view === 'month') {
+      const dateStr = this.formatDate(cellDate);
+      if (this.approvedLeaveDatesSet().has(dateStr)) {
+        return 'mat-calendar-approved-leave';
+      }
+      if (this.pendingLeaveDatesSet().has(dateStr)) {
+        return 'mat-calendar-pending-leave';
+      }
+      if (this.holidayDates().includes(dateStr)) {
+        return 'mat-calendar-holiday';
+      }
+    }
+    return '';
+  };
+
+  // Material Datepicker Filter: Prevents selecting past dates and already approved leave dates
+  leaveDateFilter = (date: Date | null): boolean => {
+    if (!date) return true;
+    const dateStr = this.formatDate(date);
+    // Cannot pick dates in past
+    if (dateStr < this.todayDateStr) {
+      return false;
+    }
+    // Cannot pick dates where leave is already approved
+    if (this.approvedLeaveDatesSet().has(dateStr)) {
+      return false;
+    }
+    return true;
+  };
+
+  // Form with cross-field validation:
+  // - Start date cannot be before current date
+  // - End Date must be on or after Start Date
+  // - Start time is optional
   leaveForm = this.fb.group({
     startDate: [null as Date | null, Validators.required],
+    startTime: [''], // Optional start time (HH:mm)
     endDate: [null as Date | null, Validators.required],
     isHalfDay: [false],
     reason: ['', [Validators.required, Validators.minLength(3)]]
@@ -145,8 +214,12 @@ export class ApplyLeaveComponent {
     validators: (group: AbstractControl): ValidationErrors | null => {
       const s = group.get('startDate')?.value;
       const e = group.get('endDate')?.value;
-      if (!s || !e) return null;
+      if (!s) return null;
       const sStr = this.formatDate(s);
+      if (sStr && sStr < this.todayDateStr) {
+        return { pastStartDate: true };
+      }
+      if (!e) return null;
       const eStr = this.formatDate(e);
       if (sStr && eStr && sStr > eStr) {
         return { dateOrder: true };
@@ -178,11 +251,23 @@ export class ApplyLeaveComponent {
     initialValue: this.leaveForm.value
   });
 
-  // Minimum allowed End Date for datepicker selection
-  minDate = computed(() => {
+  // Minimum allowed End Date for datepicker selection (at least today or startDate)
+  minEndDate = computed(() => {
     const s = this.formValue()?.startDate;
-    if (!s) return null;
-    return s instanceof Date ? s : new Date(s);
+    if (!s) return this.todayDate;
+    const sDate = s instanceof Date ? s : new Date(s);
+    return sDate >= this.todayDate ? sDate : this.todayDate;
+  });
+
+  // Backward compatibility alias for template bindings
+  minDate = computed(() => this.minEndDate());
+
+  // Check if start date is in past
+  isPastStartDate = computed(() => {
+    const val = this.formValue();
+    if (!val || !val.startDate) return false;
+    const sStr = this.formatDate(val.startDate);
+    return !!(sStr && sStr < this.todayDateStr);
   });
 
   // Live Working Days Preview
@@ -206,14 +291,53 @@ export class ApplyLeaveComponent {
   });
 
   balanceAfterLeave = computed(() => {
-    return Math.max(0, Number((this.remainingDays() - this.previewDaysCounted()).toFixed(1)));
+    return Number((this.remainingDays() - this.previewDaysCounted()).toFixed(1));
   });
 
-  isInsufficientBalance = computed(() => {
-    const days = this.previewDaysCounted();
-    const remaining = this.remainingDays();
-    return days > 0 && days > remaining;
+  isNegativeAfterLeave = computed(() => {
+    return this.previewDaysCounted() > 0 && this.balanceAfterLeave() < 0;
   });
+
+  // Live Overlap with User's OWN Approved or Pending Leaves (prevents duplicate application for same dates)
+  overlappingUserLeaves = computed(() => {
+    const val = this.formValue();
+    if (!val || !val.startDate || !val.endDate) return [];
+
+    const sStr = this.formatDate(val.startDate);
+    const eStr = this.formatDate(val.endDate);
+    if (!sStr || !eStr || sStr > eStr) return [];
+
+    const selectedDates = getDatesInRange(sStr, eStr);
+    const overlaps: { date: string; status: 'approved' | 'pending'; reason?: string }[] = [];
+
+    const userActiveLeaves = (this.myLeaves() as LeaveRequest[]).filter(
+      l => l.status === 'approved' || l.status === 'pending'
+    );
+
+    for (const l of userActiveLeaves) {
+      const lDates = getDatesInRange(l.startDate, l.endDate);
+      for (const d of selectedDates) {
+        if (lDates.includes(d)) {
+          overlaps.push({
+            date: d,
+            status: l.status as 'approved' | 'pending',
+            reason: l.reason
+          });
+        }
+      }
+    }
+
+    const uniqueMap = new Map<string, { date: string; status: 'approved' | 'pending'; reason?: string }>();
+    for (const o of overlaps) {
+      if (!uniqueMap.has(o.date) || o.status === 'approved') {
+        uniqueMap.set(o.date, o);
+      }
+    }
+
+    return Array.from(uniqueMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+  });
+
+  hasUserOverlap = computed(() => this.overlappingUserLeaves().length > 0);
 
   // Live Teammate Overlap Warning
   overlappingTeammates = computed(() => {
@@ -238,6 +362,155 @@ export class ApplyLeaveComponent {
       endDate: l.endDate
     }));
   });
+
+  // ==========================================
+  // Dedicated Monthly Leave Calendar View
+  // ==========================================
+  calendarYear = signal(new Date().getFullYear());
+  calendarMonth = signal(new Date().getMonth() + 1);
+
+  months = [
+    { value: 1, name: 'January' },
+    { value: 2, name: 'February' },
+    { value: 3, name: 'March' },
+    { value: 4, name: 'April' },
+    { value: 5, name: 'May' },
+    { value: 6, name: 'June' },
+    { value: 7, name: 'July' },
+    { value: 8, name: 'August' },
+    { value: 9, name: 'September' },
+    { value: 10, name: 'October' },
+    { value: 11, name: 'November' },
+    { value: 12, name: 'December' },
+  ];
+
+  calendarMonthPrefix = computed(() => {
+    const m = String(this.calendarMonth()).padStart(2, '0');
+    return `${this.calendarYear()}-${m}`;
+  });
+
+  calendarMonthName = computed(() => {
+    const found = this.months.find(m => m.value === this.calendarMonth());
+    return found ? found.name : '';
+  });
+
+  holidaysMap = computed(() => new Map(this.holidays().map(h => [h.date, h.name])));
+
+  calendarDays = computed(() => {
+    const year = this.calendarYear();
+    const month = this.calendarMonth();
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const firstDayIndex = new Date(year, month - 1, 1).getDay(); // 0 = Sun
+
+    const days: {
+      dayNumber: number;
+      dateStr: string;
+      isCurrentMonth: boolean;
+      isWeekend: boolean;
+      isHoliday: boolean;
+      holidayName?: string;
+      isToday: boolean;
+      isPast: boolean;
+      approvedLeave?: LeaveRequest;
+      pendingLeave?: LeaveRequest;
+      canApply: boolean;
+    }[] = [];
+
+    // Empty padding slots
+    for (let i = 0; i < firstDayIndex; i++) {
+      days.push({
+        dayNumber: 0,
+        dateStr: '',
+        isCurrentMonth: false,
+        isWeekend: false,
+        isHoliday: false,
+        isToday: false,
+        isPast: true,
+        canApply: false
+      });
+    }
+
+    const approvedMap = new Map<string, LeaveRequest>();
+    const pendingMap = new Map<string, LeaveRequest>();
+    for (const l of this.myLeaves()) {
+      const dates = getDatesInRange(l.startDate, l.endDate);
+      for (const d of dates) {
+        if (l.status === 'approved' && !approvedMap.has(d)) {
+          approvedMap.set(d, l);
+        } else if (l.status === 'pending' && !pendingMap.has(d)) {
+          pendingMap.set(d, l);
+        }
+      }
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateObj = new Date(year, month - 1, day);
+      const dayOfWeek = dateObj.getDay();
+      const isWeekend = this.weeklyOffs().includes(dayOfWeek);
+
+      const dayStr = String(day).padStart(2, '0');
+      const dateStr = `${this.calendarMonthPrefix()}-${dayStr}`;
+      const isToday = dateStr === this.todayDateStr;
+      const isPast = dateStr < this.todayDateStr;
+      const isHoliday = this.holidaysMap().has(dateStr);
+      const holidayName = this.holidaysMap().get(dateStr);
+
+      const approvedLeave = approvedMap.get(dateStr);
+      const pendingLeave = pendingMap.get(dateStr);
+      const canApply = !isPast && !approvedLeave;
+
+      days.push({
+        dayNumber: day,
+        dateStr,
+        isCurrentMonth: true,
+        isWeekend,
+        isHoliday,
+        holidayName,
+        isToday,
+        isPast,
+        approvedLeave,
+        pendingLeave,
+        canApply
+      });
+    }
+
+    return days;
+  });
+
+  prevMonth() {
+    if (this.calendarMonth() === 1) {
+      this.calendarMonth.set(12);
+      this.calendarYear.update(y => y - 1);
+    } else {
+      this.calendarMonth.update(m => m - 1);
+    }
+  }
+
+  nextMonth() {
+    if (this.calendarMonth() === 12) {
+      this.calendarMonth.set(1);
+      this.calendarYear.update(y => y + 1);
+    } else {
+      this.calendarMonth.update(m => m + 1);
+    }
+  }
+
+  goToToday() {
+    const now = new Date();
+    this.calendarYear.set(now.getFullYear());
+    this.calendarMonth.set(now.getMonth() + 1);
+  }
+
+  selectDateFromCalendar(dateStr: string) {
+    if (!dateStr || dateStr < this.todayDateStr || this.approvedLeaveDatesSet().has(dateStr)) return;
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const targetDate = new Date(y, m - 1, d);
+    this.leaveForm.patchValue({
+      startDate: targetDate,
+      endDate: targetDate
+    });
+    this.selectedTab.set(0); // Switch to Apply for Leave form
+  }
 
   formatDate(d: any): string {
     if (!d) return '';
@@ -265,6 +538,11 @@ export class ApplyLeaveComponent {
     return '';
   }
 
+  formatTime(t?: string | null): string {
+    if (!t) return '';
+    return formatTime12h(t);
+  }
+
   async submitLeave() {
     if (this.leaveForm.invalid || this.isSubmitting()) {
       this.leaveForm.markAllAsTouched();
@@ -275,9 +553,24 @@ export class ApplyLeaveComponent {
     const sStr = this.formatDate(val.startDate);
     const eStr = this.formatDate(val.endDate);
 
+    if (sStr < this.todayDateStr) {
+      this.snackBar.open('Cannot apply: Start date cannot be earlier than today.', 'Close', {
+        duration: 4000
+      });
+      return;
+    }
+
     if (sStr > eStr) {
       this.snackBar.open('Cannot apply: End date cannot be earlier than start date.', 'Close', {
         duration: 4000
+      });
+      return;
+    }
+
+    if (this.overlappingUserLeaves().length > 0) {
+      const dates = this.overlappingUserLeaves().map(o => o.date).join(', ');
+      this.snackBar.open(`Cannot apply: You already have a booked leave on ${dates}. Please select different dates.`, 'Close', {
+        duration: 5000
       });
       return;
     }
@@ -286,13 +579,6 @@ export class ApplyLeaveComponent {
     if (daysCount <= 0) {
       this.snackBar.open('Selected dates fall entirely on company holidays or weekly off days (0 working days).', 'Close', {
         duration: 4000
-      });
-      return;
-    }
-
-    if (this.isInsufficientBalance()) {
-      this.snackBar.open(`Cannot apply: Requested ${daysCount} working days exceed your remaining balance (${this.remainingDays()} days).`, 'Close', {
-        duration: 5000
       });
       return;
     }
@@ -309,6 +595,7 @@ export class ApplyLeaveComponent {
         userEmail: user.email || '',
         leaveTypeId: 'unified',
         startDate: sStr,
+        startTime: val.startTime ? (val.startTime as string).trim() : null,
         endDate: eStr,
         isHalfDay: !!val.isHalfDay,
         days: daysCount,
@@ -328,19 +615,27 @@ export class ApplyLeaveComponent {
   }
 
   async cancelRequest(req: LeaveRequest) {
-    if (confirm(`Are you sure you want to cancel this leave from ${req.startDate} to ${req.endDate}?`)) {
-      this.cancellingId.set(req.id);
-      try {
-        const cancelFn = httpsCallable(this.functions, 'cancelLeave');
-        await cancelFn({ requestId: req.id });
-        this.snackBar.open('Leave request cancelled successfully. Any deducted balance is restored.', 'Close', {
-          duration: 4000
-        });
-      } catch (e: any) {
-        this.snackBar.open(e.message || 'Error cancelling leave', 'Close', { duration: 4000 });
-      } finally {
-        this.cancellingId.set(null);
-      }
+    const confirmed = await this.confirmService.confirm({
+      title: 'Cancel Leave Request',
+      message: `Are you sure you want to cancel this leave application from ${req.startDate} to ${req.endDate}? Any deducted balance will be restored.`,
+      confirmText: 'Yes, Cancel Leave',
+      cancelText: 'Keep Request',
+      isDestructive: true,
+      icon: 'cancel'
+    });
+    if (!confirmed) return;
+
+    this.cancellingId.set(req.id);
+    try {
+      const cancelFn = httpsCallable(this.functions, 'cancelLeave');
+      await cancelFn({ requestId: req.id });
+      this.snackBar.open('Leave request cancelled successfully. Any deducted balance is restored.', 'Close', {
+        duration: 4000
+      });
+    } catch (e: any) {
+      this.snackBar.open(e.message || 'Error cancelling leave', 'Close', { duration: 4000 });
+    } finally {
+      this.cancellingId.set(null);
     }
   }
 
@@ -349,3 +644,4 @@ export class ApplyLeaveComponent {
     return true;
   }
 }
+

@@ -1,35 +1,80 @@
 <div class="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
-  <!-- Top Header with Month/Year Filters & Regularize Action -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  <!-- Top Header with Month Navigation, Filters & Regularize Action -->
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
     <div>
-      <h2 class="text-2xl sm:text-3xl font-extrabold text-[#1F2937] dark:text-[#f8fafc] tracking-tight">My Attendance</h2>
+      <div class="flex items-center gap-2.5">
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-[#1F2937] dark:text-[#f8fafc] tracking-tight">
+          My Attendance
+        </h2>
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900 shadow-soft-surface-sm">
+          {{ currentMonthName() }} {{ selectedYear() }}
+        </span>
+      </div>
       <p class="text-[#4B5563] dark:text-[#94a3b8] text-sm mt-0.5">
-        Monthly attendance calendar, worked hours, and regularization requests.
+        Interactive monthly attendance breakdown, punch timelines, and regularization requests.
       </p>
     </div>
 
-    <!-- Filters & Action Button -->
-    <div class="flex items-center gap-3 self-start sm:self-auto">
-      <!-- Month Selector -->
-      <mat-form-field appearance="outline" class="w-36 !mb-0" subscriptSizing="dynamic">
-        <mat-select [value]="selectedMonth()" (selectionChange)="selectedMonth.set($event.value)">
-          <mat-option *ngFor="let m of months" [value]="m.value">{{ m.name }}</mat-option>
-        </mat-select>
-      </mat-form-field>
+    <!-- Navigation & Action Controls -->
+    <div class="flex flex-wrap items-center gap-2.5 self-start lg:self-auto">
+      <!-- Unified Month & Year Navigator Capsule -->
+      <div class="flex items-center p-1 rounded-2xl bg-soft-bg border border-slate-200/80 dark:border-slate-800 shadow-soft-surface-sm gap-1">
+        <!-- Prev Month Button -->
+        <button 
+          type="button" 
+          (click)="prevMonth()" 
+          class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:bg-white dark:hover:bg-slate-800 hover:shadow-soft-surface-sm transition-all"
+          matTooltip="Previous Month">
+          <mat-icon class="!w-5 !h-5 !text-[20px]">chevron_left</mat-icon>
+        </button>
 
-      <!-- Year Selector -->
-      <mat-form-field appearance="outline" class="w-28 !mb-0" subscriptSizing="dynamic">
-        <mat-select [value]="selectedYear()" (selectionChange)="selectedYear.set($event.value)">
-          <mat-option *ngFor="let y of years" [value]="y">{{ y }}</mat-option>
-        </mat-select>
-      </mat-form-field>
+        <!-- Month Dropdown -->
+        <div class="relative flex items-center">
+          <select 
+            [value]="selectedMonth()" 
+            (change)="selectedMonth.set(+$any($event.target).value)" 
+            class="h-9 pl-3.5 pr-8 rounded-xl bg-white dark:bg-slate-800 text-xs sm:text-sm font-bold text-[#1F2937] dark:text-[#f8fafc] border border-slate-200/70 dark:border-slate-700 shadow-soft-surface-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none transition-all hover:border-blue-400">
+            <option *ngFor="let m of months" [value]="m.value">{{ m.name }}</option>
+          </select>
+          <mat-icon class="absolute right-2.5 pointer-events-none !w-4 !h-4 !text-[16px] text-slate-400">expand_more</mat-icon>
+        </div>
+
+        <!-- Year Dropdown -->
+        <div class="relative flex items-center">
+          <select 
+            [value]="selectedYear()" 
+            (change)="selectedYear.set(+$any($event.target).value)" 
+            class="h-9 pl-3 pr-7 rounded-xl bg-white dark:bg-slate-800 text-xs sm:text-sm font-bold text-[#1F2937] dark:text-[#f8fafc] border border-slate-200/70 dark:border-slate-700 shadow-soft-surface-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none transition-all hover:border-blue-400">
+            <option *ngFor="let y of years" [value]="y">{{ y }}</option>
+          </select>
+          <mat-icon class="absolute right-1.5 pointer-events-none !w-4 !h-4 !text-[16px] text-slate-400">expand_more</mat-icon>
+        </div>
+
+        <!-- Next Month Button -->
+        <button 
+          type="button" 
+          (click)="nextMonth()" 
+          class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:bg-white dark:hover:bg-slate-800 hover:shadow-soft-surface-sm transition-all"
+          matTooltip="Next Month">
+          <mat-icon class="!w-5 !h-5 !text-[20px]">chevron_right</mat-icon>
+        </button>
+      </div>
+
+      <!-- Jump to Today Button -->
+      <button 
+        type="button" 
+        (click)="goToToday()" 
+        class="soft-btn !h-[46px] !px-4 text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 shadow-soft-surface-sm border border-slate-200/80 dark:border-slate-800 hover:border-blue-400 transition-all">
+        <mat-icon class="!w-4 !h-4 !text-[16px] text-blue-500">today</mat-icon>
+        Today
+      </button>
 
       <!-- Regularize Button -->
       <button 
         type="button" 
         (click)="openRegularizationModal()" 
-        class="soft-btn-primary !h-11 !px-5 whitespace-nowrap">
-        <mat-icon class="mr-1.5 !w-5 !h-5 !text-[20px]">edit_calendar</mat-icon>
+        class="soft-btn-primary !h-[46px] !px-5 whitespace-nowrap shadow-soft-surface-md flex items-center gap-2 text-xs font-bold">
+        <mat-icon class="!w-4 !h-4 !text-[18px]">edit_calendar</mat-icon>
         Regularize
       </button>
     </div>
@@ -37,102 +82,333 @@
 
   <!-- Monthly Metric Summary Tiles -->
   <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-    <div class="surface !p-4 flex flex-col justify-between">
-      <div class="text-[11px] font-bold text-[#15803D] dark:text-emerald-400 uppercase tracking-wider">Present</div>
+    <!-- Present -->
+    <div class="surface !p-4 flex flex-col justify-between border-l-4 border-l-emerald-500 hover:shadow-soft-surface-md transition-all">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Present</span>
+        <mat-icon class="!w-4 !h-4 !text-[18px] text-emerald-500">check_circle</mat-icon>
+      </div>
       <div class="text-2xl font-black text-[#1F2937] dark:text-[#f8fafc] mt-1">{{ summaryMetrics().present }}</div>
-      <div class="text-[11px] text-[#4B5563] dark:text-[#94a3b8] mt-0.5 font-medium">days recorded</div>
+      <div class="text-[11px] text-[#4B5563] dark:text-[#94a3b8] mt-0.5 font-medium">days on schedule</div>
     </div>
 
-    <div class="surface !p-4 flex flex-col justify-between">
-      <div class="text-[11px] font-bold text-[#C2410C] dark:text-amber-400 uppercase tracking-wider">Late</div>
+    <!-- Late -->
+    <div class="surface !p-4 flex flex-col justify-between border-l-4 border-l-amber-400 hover:shadow-soft-surface-md transition-all">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Late</span>
+        <mat-icon class="!w-4 !h-4 !text-[18px] text-amber-500">schedule</mat-icon>
+      </div>
       <div class="text-2xl font-black text-[#1F2937] dark:text-[#f8fafc] mt-1">{{ summaryMetrics().late }}</div>
-      <div class="text-[11px] text-[#4B5563] dark:text-[#94a3b8] mt-0.5 font-medium">after 10:20 AM</div>
+      <div class="text-[11px] text-[#4B5563] dark:text-[#94a3b8] mt-0.5 font-medium">grace exceeded</div>
     </div>
 
-    <div class="surface !p-4 flex flex-col justify-between">
-      <div class="text-[11px] font-bold text-[#C2410C] dark:text-orange-400 uppercase tracking-wider">Half Day</div>
+    <!-- Half Day -->
+    <div class="surface !p-4 flex flex-col justify-between border-l-4 border-l-orange-400 hover:shadow-soft-surface-md transition-all">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wider">Half Day</span>
+        <mat-icon class="!w-4 !h-4 !text-[18px] text-orange-500">hourglass_bottom</mat-icon>
+      </div>
       <div class="text-2xl font-black text-[#1F2937] dark:text-[#f8fafc] mt-1">{{ summaryMetrics().halfDay }}</div>
-      <div class="text-[11px] text-[#4B5563] dark:text-[#94a3b8] mt-0.5 font-medium">&lt; 4.5 hours</div>
+      <div class="text-[11px] text-[#4B5563] dark:text-[#94a3b8] mt-0.5 font-medium">partial shifts</div>
     </div>
 
-    <div class="surface !p-4 flex flex-col justify-between">
-      <div class="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Absent</div>
+    <!-- Absent -->
+    <div class="surface !p-4 flex flex-col justify-between border-l-4 border-l-rose-500 hover:shadow-soft-surface-md transition-all">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Absent</span>
+        <mat-icon class="!w-4 !h-4 !text-[18px] text-rose-500">cancel</mat-icon>
+      </div>
       <div class="text-2xl font-black text-[#1F2937] dark:text-[#f8fafc] mt-1">{{ summaryMetrics().absent }}</div>
-      <div class="text-[11px] text-[#4B5563] dark:text-[#94a3b8] mt-0.5 font-medium">unexcused</div>
+      <div class="text-[11px] text-[#4B5563] dark:text-[#94a3b8] mt-0.5 font-medium">missed punches</div>
     </div>
 
-    <div class="surface !p-4 flex flex-col justify-between">
-      <div class="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">On Leave</div>
+    <!-- On Leave -->
+    <div class="surface !p-4 flex flex-col justify-between border-l-4 border-l-blue-500 hover:shadow-soft-surface-md transition-all">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">On Leave</span>
+        <mat-icon class="!w-4 !h-4 !text-[18px] text-blue-500">beach_access</mat-icon>
+      </div>
       <div class="text-2xl font-black text-[#1F2937] dark:text-[#f8fafc] mt-1">{{ summaryMetrics().leave }}</div>
-      <div class="text-[11px] text-[#4B5563] dark:text-[#94a3b8] mt-0.5 font-medium">approved</div>
+      <div class="text-[11px] text-[#4B5563] dark:text-[#94a3b8] mt-0.5 font-medium">approved days</div>
     </div>
 
-    <div class="surface !p-4 flex flex-col justify-between">
-      <div class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Total Time</div>
+    <!-- Total Time -->
+    <div class="surface !p-4 flex flex-col justify-between border-l-4 border-l-indigo-500 hover:shadow-soft-surface-md transition-all">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Worked Hours</span>
+        <mat-icon class="!w-4 !h-4 !text-[18px] text-indigo-500">query_builder</mat-icon>
+      </div>
       <div class="text-2xl font-black text-[#1F2937] dark:text-[#f8fafc] mt-1">{{ summaryMetrics().totalHours }}h</div>
-      <div class="text-[11px] text-[#4B5563] dark:text-[#94a3b8] mt-0.5 font-medium">worked this month</div>
+      <div class="text-[11px] text-[#4B5563] dark:text-[#94a3b8] mt-0.5 font-medium">Avg {{ summaryMetrics().avgHoursPerDay }}</div>
     </div>
   </div>
 
-  <!-- Main Calendar Heatmap Card -->
-  <div class="surface !p-6 sm:!p-8">
-    <!-- Status Legend -->
-    <div class="flex flex-wrap items-center gap-3 sm:gap-6 mb-6 pb-4 border-b border-slate-200/60 dark:border-slate-800 text-xs text-[#4B5563] dark:text-[#94a3b8]">
-      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500 shadow-soft-surface-sm"></span> Present</div>
-      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-400 shadow-soft-surface-sm"></span> Late</div>
-      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-orange-400 shadow-soft-surface-sm"></span> Half Day</div>
-      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-rose-500 shadow-soft-surface-sm"></span> Absent</div>
-      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500 shadow-soft-surface-sm"></span> Leave</div>
-      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-purple-400 shadow-soft-surface-sm"></span> Holiday</div>
-      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-700 shadow-soft-surface-sm"></span> Weekend</div>
+  <!-- Main Calendar Card -->
+  <div class="surface !p-5 sm:!p-7 space-y-5">
+    <!-- Interactive Status Legend with Counts -->
+    <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200/60 dark:border-slate-800">
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <!-- Present pill -->
+        <button 
+          type="button" 
+          (click)="toggleLegendFilter('present')"
+          class="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all border"
+          [ngClass]="activeLegendFilter() === 'present' 
+            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' 
+            : 'bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200/70 hover:bg-emerald-100'">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          Present ({{ summaryMetrics().present }})
+        </button>
+
+        <!-- Late pill -->
+        <button 
+          type="button" 
+          (click)="toggleLegendFilter('late')"
+          class="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all border"
+          [ngClass]="activeLegendFilter() === 'late' 
+            ? 'bg-amber-500 text-slate-900 border-amber-500 shadow-sm' 
+            : 'bg-amber-50/80 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200/70 hover:bg-amber-100'">
+          <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+          Late ({{ summaryMetrics().late }})
+        </button>
+
+        <!-- Half Day pill -->
+        <button 
+          type="button" 
+          (click)="toggleLegendFilter('half-day')"
+          class="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all border"
+          [ngClass]="activeLegendFilter() === 'half-day' 
+            ? 'bg-orange-500 text-white border-orange-500 shadow-sm' 
+            : 'bg-orange-50/80 dark:bg-orange-950/40 text-orange-800 dark:text-orange-300 border-orange-200/70 hover:bg-orange-100'">
+          <span class="w-2 h-2 rounded-full bg-orange-400"></span>
+          Half Day ({{ summaryMetrics().halfDay }})
+        </button>
+
+        <!-- Absent pill -->
+        <button 
+          type="button" 
+          (click)="toggleLegendFilter('absent')"
+          class="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all border"
+          [ngClass]="activeLegendFilter() === 'absent' 
+            ? 'bg-rose-600 text-white border-rose-600 shadow-sm' 
+            : 'bg-rose-50/80 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200/70 hover:bg-rose-100'">
+          <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+          Absent ({{ summaryMetrics().absent }})
+        </button>
+
+        <!-- Leave pill -->
+        <button 
+          type="button" 
+          (click)="toggleLegendFilter('leave')"
+          class="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all border"
+          [ngClass]="activeLegendFilter() === 'leave' 
+            ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
+            : 'bg-blue-50/80 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200/70 hover:bg-blue-100'">
+          <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+          Leave ({{ summaryMetrics().leave }})
+        </button>
+
+        <!-- Holiday pill -->
+        <button 
+          type="button" 
+          (click)="toggleLegendFilter('holiday')"
+          class="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all border"
+          [ngClass]="activeLegendFilter() === 'holiday' 
+            ? 'bg-purple-600 text-white border-purple-600 shadow-sm' 
+            : 'bg-purple-50/80 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border-purple-200/70 hover:bg-purple-100'">
+          <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+          Holiday ({{ summaryMetrics().holidays }})
+        </button>
+
+        <!-- Weekend pill -->
+        <button 
+          type="button" 
+          (click)="toggleLegendFilter('weekend')"
+          class="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all border"
+          [ngClass]="activeLegendFilter() === 'weekend' 
+            ? 'bg-slate-600 text-white border-slate-600 shadow-sm' 
+            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200'">
+          <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+          Weekend ({{ summaryMetrics().weekends }})
+        </button>
+      </div>
+
+      <!-- Quick helper note -->
+      <span class="text-[11px] text-slate-400 italic">Click any day to view complete punch details & times</span>
     </div>
 
     <!-- Days of Week Header -->
-    <div class="grid grid-cols-7 gap-2 sm:gap-3 mb-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
-      <div>Sun</div>
-      <div>Mon</div>
-      <div>Tue</div>
-      <div>Wed</div>
-      <div>Thu</div>
-      <div>Fri</div>
-      <div>Sat</div>
+    <div class="grid grid-cols-7 gap-2 sm:gap-3 text-center text-xs font-extrabold uppercase tracking-wider">
+      <div class="text-amber-600 dark:text-amber-400">Sun</div>
+      <div class="text-slate-500 dark:text-slate-400">Mon</div>
+      <div class="text-slate-500 dark:text-slate-400">Tue</div>
+      <div class="text-slate-500 dark:text-slate-400">Wed</div>
+      <div class="text-slate-500 dark:text-slate-400">Thu</div>
+      <div class="text-slate-500 dark:text-slate-400">Fri</div>
+      <div class="text-amber-600 dark:text-amber-400">Sat</div>
     </div>
 
-    <!-- Grid of Calendar Tiles -->
+    <!-- Calendar Day Grid -->
     <div class="grid grid-cols-7 gap-2 sm:gap-3">
       <div *ngFor="let day of calendarDays()" 
-           class="aspect-square rounded-2xl border flex flex-col items-center justify-between p-2 relative calendar-tile cursor-pointer select-none"
-           [ngClass]="getDayTileBg(day)"
-           (click)="selectDay(day)">
-        
-        <span *ngIf="day.isCurrentMonth" class="text-xs sm:text-sm font-extrabold self-start">
-          {{ day.dayNumber }}
-        </span>
+           class="calendar-day-tile min-h-[96px] sm:min-h-[114px] rounded-2xl p-2 sm:p-2.5 flex flex-col justify-between border relative select-none"
+           [ngClass]="{
+             'invisible pointer-events-none': !day.isCurrentMonth,
+             'tile-future opacity-35 bg-slate-50/40 dark:bg-slate-900/20 border-slate-200/40 dark:border-slate-800/40 cursor-default': day.isFuture,
+             'cursor-pointer': day.isCurrentMonth && !day.isFuture,
+             'ring-2 ring-blue-500 shadow-md shadow-blue-500/20': day.isToday,
+             'ring-2 ring-indigo-600': selectedDay()?.dateStr === day.dateStr && !day.isToday,
+             'legend-filtered-out': activeLegendFilter() && activeLegendFilter() !== day.status,
 
-        <!-- Middle indicator / label -->
-        <div *ngIf="day.isCurrentMonth" class="text-[10px] sm:text-xs font-bold text-center truncate w-full px-1">
-          <span *ngIf="day.isHoliday" class="truncate block" [title]="day.holidayName">{{ day.holidayName }}</span>
-          <span *ngIf="day.isWeekend && !day.isHoliday">Off</span>
-          <span *ngIf="day.attendance?.workedMinutes">{{ formatMins(day.attendance?.workedMinutes) }}</span>
-          <span *ngIf="day.status === 'absent' && !day.isWeekend && !day.isHoliday">Absent</span>
-          <span *ngIf="day.status === 'leave'">Leave</span>
+             'bg-emerald-50/70 dark:bg-emerald-950/25 border-emerald-200/90 dark:border-emerald-800/50 hover:border-emerald-400': day.status === 'present' && !day.isFuture,
+             'bg-amber-50/70 dark:bg-amber-950/25 border-amber-200/90 dark:border-amber-800/50 hover:border-amber-400': day.status === 'late' && !day.isFuture,
+             'bg-orange-50/70 dark:bg-orange-950/25 border-orange-200/90 dark:border-orange-800/50 hover:border-orange-400': day.status === 'half-day' && !day.isFuture,
+             'bg-blue-50/70 dark:bg-blue-950/25 border-blue-200/90 dark:border-blue-800/50 hover:border-blue-400': day.status === 'leave' && !day.isFuture,
+             'bg-purple-50/70 dark:bg-purple-950/25 border-purple-200/90 dark:border-purple-800/50 hover:border-purple-400': day.status === 'holiday' && !day.isFuture,
+             'bg-rose-50/70 dark:bg-rose-950/25 border-rose-200/90 dark:border-rose-900/50 hover:border-rose-400': day.status === 'absent' && !day.isFuture && !day.isWeekend,
+             'bg-slate-50/60 dark:bg-slate-900/40 border-dashed border-slate-200/80 dark:border-slate-800 text-slate-400': day.status === 'weekend' && !day.isFuture
+           }"
+           (click)="selectDay(day)">
+
+        <!-- Top Row: Day Number + Badge / Flags -->
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs sm:text-sm font-black"
+                  [ngClass]="{
+                    'text-blue-600 dark:text-blue-400 font-extrabold': day.isToday,
+                    'text-emerald-700 dark:text-emerald-300': day.status === 'present',
+                    'text-amber-800 dark:text-amber-300': day.status === 'late',
+                    'text-orange-800 dark:text-orange-300': day.status === 'half-day',
+                    'text-blue-700 dark:text-blue-300': day.status === 'leave',
+                    'text-purple-700 dark:text-purple-300': day.status === 'holiday',
+                    'text-rose-700 dark:text-rose-300': day.status === 'absent',
+                    'text-slate-400': day.status === 'weekend' || day.isFuture
+                  }">
+              {{ day.dayNumber }}
+            </span>
+
+            <!-- TODAY Tag -->
+            <span *ngIf="day.isToday" class="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-blue-600 text-white shadow-soft-surface-sm">
+              <span class="w-1.5 h-1.5 rounded-full bg-white today-pulse-dot"></span>
+              TODAY
+            </span>
+          </div>
+
+          <!-- Top-right Status Pill / Icons -->
+          <div class="flex items-center gap-1">
+            <!-- Flagged Punch Warning -->
+            <mat-icon *ngIf="day.attendance?.reviewStatus === 'pending'" 
+                      class="!w-3.5 !h-3.5 !text-[14px] text-amber-500 animate-pulse" 
+                      matTooltip="Punch flagged (Outside office)">
+              flag
+            </mat-icon>
+
+            <!-- Status Indicator Pill -->
+            <span *ngIf="day.status === 'present'" class="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+              Present
+            </span>
+            <span *ngIf="day.status === 'late'" class="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300">
+              Late
+            </span>
+            <span *ngIf="day.status === 'half-day'" class="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-100 dark:bg-orange-950 text-orange-900 dark:text-orange-300">
+              Half Day
+            </span>
+            <span *ngIf="day.status === 'leave'" class="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-300">
+              Leave
+            </span>
+            <span *ngIf="day.status === 'holiday'" class="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-300">
+              Holiday
+            </span>
+            <span *ngIf="day.status === 'absent' && !day.isFuture && !day.isWeekend" class="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300">
+              Absent
+            </span>
+          </div>
         </div>
 
-        <!-- Flag icon if outside office -->
-        <div *ngIf="day.attendance?.reviewStatus === 'pending'" class="self-end" title="Outside office punch (Flagged)">
-          <mat-icon class="!w-3 !h-3 !text-[12px] text-amber-200">flag</mat-icon>
+        <!-- Middle Content: In/Out Times or Reason -->
+        <div class="my-1 text-center w-full">
+          <!-- Holiday Name -->
+          <div *ngIf="day.status === 'holiday'" class="text-[10px] sm:text-xs font-bold text-purple-800 dark:text-purple-300 truncate px-1" [title]="day.holidayName">
+            {{ day.holidayName }}
+          </div>
+
+          <!-- Leave Label & Start Time -->
+          <div *ngIf="day.status === 'leave'" class="space-y-0.5">
+            <span class="text-[10px] sm:text-xs font-bold text-blue-800 dark:text-blue-300 truncate block">
+              {{ day.leaveRequest?.reason || 'Approved Leave' }}
+            </span>
+            <span *ngIf="day.leaveRequest?.startTime" class="text-[9px] font-semibold text-blue-600 dark:text-blue-400">
+              From {{ formatTime(day.leaveRequest?.startTime) }}
+            </span>
+          </div>
+
+          <!-- Punched In/Out Times -->
+          <div *ngIf="day.attendance as att" class="space-y-0.5">
+            <div class="text-[10px] sm:text-[11px] font-extrabold text-slate-800 dark:text-slate-200">
+              {{ day.checkInFormatted }}
+            </div>
+            <div *ngIf="day.checkOutFormatted && day.checkOutFormatted !== '--:--'" class="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400">
+              &rarr; {{ day.checkOutFormatted }}
+            </div>
+          </div>
+
+          <!-- Absent Placeholder -->
+          <div *ngIf="day.status === 'absent' && !day.isFuture && !day.isWeekend" class="text-[10px] font-bold text-rose-600 dark:text-rose-400">
+            Missed Punch
+          </div>
+
+          <!-- Weekend -->
+          <div *ngIf="day.status === 'weekend' && !day.isHoliday" class="text-[10px] font-semibold text-slate-400">
+            Off
+          </div>
+        </div>
+
+        <!-- Bottom Row: Worked Duration or Quick Hint -->
+        <div class="flex items-center justify-between text-[10px] font-bold w-full">
+          <!-- Duration badge for attended days -->
+          <span *ngIf="day.workedFormatted" class="px-1.5 py-0.5 rounded-md bg-white/70 dark:bg-slate-800/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/40 text-[9px] sm:text-[10px] shadow-soft-surface-sm">
+            ⏱ {{ day.workedFormatted }}
+          </span>
+
+          <span *ngIf="day.status === 'absent' && !day.isFuture && !day.isWeekend" class="text-[9px] font-bold text-rose-600 hover:underline">
+            Regularize &rarr;
+          </span>
+
+          <span *ngIf="day.status === 'holiday'" class="text-[9px] text-purple-600 dark:text-purple-400">
+            Official
+          </span>
+
+          <span *ngIf="day.status === 'weekend'" class="text-[9px] text-slate-400">
+            Weekend
+          </span>
+
+          <span *ngIf="day.status === 'leave'" class="text-[9px] text-blue-600 dark:text-blue-400">
+            100% Paid
+          </span>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Regularizations History Section -->
-  <div class="surface !p-6 sm:!p-8">
-    <div class="flex items-center justify-between mb-4">
+  <div class="surface !p-6 sm:!p-8 space-y-4">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800">
       <div class="flex items-center gap-2.5">
-        <mat-icon class="text-slate-400">edit_calendar</mat-icon>
-        <h3 class="text-base font-bold text-[#1F2937] dark:text-[#f8fafc]">My Regularization Requests</h3>
+        <div class="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+          <mat-icon class="!w-4 !h-4 !text-[18px]">history</mat-icon>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-[#1F2937] dark:text-[#f8fafc]">My Regularization Requests</h3>
+          <p class="text-xs text-slate-400">Correction history for punch adjustments</p>
+        </div>
       </div>
+
+      <button 
+        type="button" 
+        (click)="openRegularizationModal()" 
+        class="soft-btn !py-1.5 !px-3 text-xs font-bold text-blue-600 dark:text-blue-400">
+        + New Request
+      </button>
     </div>
 
     <div *ngIf="regularizations().length > 0; else noRegs" class="overflow-x-auto">
@@ -143,7 +419,7 @@
             <th class="py-3 px-4">Requested Timing</th>
             <th class="py-3 px-4">Reason</th>
             <th class="py-3 px-4">Status</th>
-            <th class="py-3 px-4">Manager Comment</th>
+            <th class="py-3 px-4">Manager Review</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 text-sm">
@@ -151,7 +427,7 @@
             <td class="py-3.5 px-4 font-bold text-[#1F2937] dark:text-[#f8fafc] whitespace-nowrap">
               {{ reg.date | date:'mediumDate' }}
             </td>
-            <td class="py-3.5 px-4 text-[#4B5563] dark:text-[#94a3b8] whitespace-nowrap">
+            <td class="py-3.5 px-4 text-[#4B5563] dark:text-[#94a3b8] whitespace-nowrap font-medium">
               {{ reg.requestedIn }} &rarr; {{ reg.requestedOut }}
             </td>
             <td class="py-3.5 px-4 text-[#4B5563] dark:text-[#94a3b8] max-w-xs truncate" [title]="reg.reason">
@@ -161,7 +437,7 @@
               <app-status-chip [status]="reg.status"></app-status-chip>
             </td>
             <td class="py-3.5 px-4 text-slate-500 italic max-w-xs truncate">
-              {{ reg.comment || '—' }}
+              {{ reg.comment || 'Pending manager decision' }}
             </td>
           </tr>
         </tbody>
@@ -169,22 +445,31 @@
     </div>
 
     <ng-template #noRegs>
-      <div class="py-6 text-center text-sm text-[#4B5563] dark:text-[#94a3b8]">
-        No regularization requests submitted yet.
+      <div class="py-8 text-center text-sm text-[#4B5563] dark:text-[#94a3b8] space-y-1">
+        <mat-icon class="!w-6 !h-6 !text-[24px] text-slate-300 mx-auto">task_alt</mat-icon>
+        <p class="font-semibold text-slate-700 dark:text-slate-300">No regularizations needed</p>
+        <p class="text-xs text-slate-400">All your punch in/out timestamps are recorded correctly.</p>
       </div>
     </ng-template>
   </div>
 </div>
 
+<!-- ===================================================================== -->
 <!-- Day Details Drawer / Modal -->
-<div *ngIf="selectedDay()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-  <div class="surface !p-6 sm:!p-8 max-w-md w-full shadow-soft-surface-lg space-y-5 animate-in fade-in zoom-in-95">
+<!-- ===================================================================== -->
+<div *ngIf="selectedDay()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
+  <div class="surface !p-6 sm:!p-8 max-w-md w-full shadow-soft-surface-lg space-y-5 animate-in fade-in zoom-in-95 my-auto border border-slate-200/80 dark:border-slate-800">
     <div class="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800">
       <div>
-        <h3 class="text-lg font-bold text-[#1F2937] dark:text-[#f8fafc]">
-          {{ selectedDay()?.dateStr | date:'fullDate' }}
-        </h3>
-        <p class="text-xs text-slate-400">Daily Attendance Breakdown</p>
+        <div class="flex items-center gap-2">
+          <h3 class="text-lg font-bold text-[#1F2937] dark:text-[#f8fafc]">
+            {{ selectedDay()?.dateStr | date:'fullDate' }}
+          </h3>
+          <span *ngIf="selectedDay()?.isToday" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-600 text-white">
+            Today
+          </span>
+        </div>
+        <p class="text-xs text-slate-400">Daily Punch & Verification Breakdown</p>
       </div>
       <button mat-icon-button (click)="closeDetails()" class="soft-btn !w-8 !h-8 !p-1 !rounded-full">
         <mat-icon class="!w-4 !h-4 !text-[18px]">close</mat-icon>
@@ -198,27 +483,39 @@
 
     <!-- Attendance Details in Soft Well -->
     <div *ngIf="selectedDay()?.attendance as att; else noAttRecord" class="space-y-3 bg-soft-bg shadow-soft-well-sm p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 text-sm">
-      <div class="flex justify-between">
-        <span class="text-[#4B5563] dark:text-[#94a3b8]">Check In:</span>
+      <div class="flex justify-between items-center">
+        <span class="text-[#4B5563] dark:text-[#94a3b8] flex items-center gap-1.5">
+          <mat-icon class="!w-4 !h-4 !text-[16px] text-emerald-500">login</mat-icon>
+          Check In:
+        </span>
         <span class="font-bold text-[#1F2937] dark:text-[#f8fafc]">{{ formatTime(att.checkIn) }}</span>
       </div>
-      <div class="flex justify-between">
-        <span class="text-[#4B5563] dark:text-[#94a3b8]">Check Out:</span>
+
+      <div class="flex justify-between items-center">
+        <span class="text-[#4B5563] dark:text-[#94a3b8] flex items-center gap-1.5">
+          <mat-icon class="!w-4 !h-4 !text-[16px] text-rose-500">logout</mat-icon>
+          Check Out:
+        </span>
         <span class="font-bold text-[#1F2937] dark:text-[#f8fafc]">{{ formatTime(att.checkOut) }}</span>
       </div>
-      <div class="flex justify-between">
-        <span class="text-[#4B5563] dark:text-[#94a3b8]">Time Worked:</span>
-        <span class="font-bold text-blue-600 dark:text-blue-400">{{ formatMins(att.workedMinutes) }}</span>
+
+      <div class="flex justify-between items-center pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
+        <span class="text-[#4B5563] dark:text-[#94a3b8] flex items-center gap-1.5">
+          <mat-icon class="!w-4 !h-4 !text-[16px] text-blue-500">timer</mat-icon>
+          Time Worked:
+        </span>
+        <span class="font-bold text-blue-600 dark:text-blue-400 text-base">{{ formatMins(att.workedMinutes) }}</span>
       </div>
 
-      <div *ngIf="att.punchInMeta as meta" class="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-xs text-slate-500 space-y-1">
-        <div class="flex justify-between">
+      <div *ngIf="att.punchInMeta as meta" class="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-xs text-slate-500 space-y-1.5">
+        <div class="flex justify-between items-center">
           <span>Office Verification:</span>
-          <span class="font-bold" [ngClass]="meta.verified ? 'stat--up' : 'stat--warn'">
+          <span class="font-bold px-2 py-0.5 rounded text-[10px]" 
+                [ngClass]="meta.verified ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'">
             {{ meta.verified ? 'Verified At Office' : 'Outside Office (Flagged)' }}
           </span>
         </div>
-        <div *ngIf="meta.distanceM" class="flex justify-between">
+        <div *ngIf="meta.distanceM !== undefined" class="flex justify-between">
           <span>Distance from Office:</span>
           <span class="font-medium text-[#1F2937] dark:text-[#f8fafc]">{{ meta.distanceM }} meters</span>
         </div>
@@ -234,12 +531,31 @@
     </div>
 
     <ng-template #noAttRecord>
-      <div class="p-6 text-center text-sm text-[#4B5563] dark:text-[#94a3b8] bg-soft-bg shadow-soft-well-sm rounded-2xl border border-slate-200/50 dark:border-slate-800">
-        <span *ngIf="selectedDay()?.isHoliday">Official Holiday: {{ selectedDay()?.holidayName }}</span>
-        <span *ngIf="selectedDay()?.isWeekend">Weekend Off (Non-working day)</span>
-        <span *ngIf="!selectedDay()?.isHoliday && !selectedDay()?.isWeekend">
-          No punch record recorded for this date.
-        </span>
+      <div class="p-6 text-center text-sm text-[#4B5563] dark:text-[#94a3b8] bg-soft-bg shadow-soft-well-sm rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-2">
+        <div *ngIf="selectedDay()?.isHoliday" class="space-y-1">
+          <mat-icon class="!w-8 !h-8 !text-[32px] text-purple-500 mx-auto">celebration</mat-icon>
+          <div class="font-bold text-purple-900 dark:text-purple-300 text-base">{{ selectedDay()?.holidayName }}</div>
+          <p class="text-xs text-purple-700 dark:text-purple-400">Official Company Holiday</p>
+        </div>
+
+        <div *ngIf="selectedDay()?.leaveRequest as leave" class="space-y-1">
+          <mat-icon class="!w-8 !h-8 !text-[32px] text-blue-500 mx-auto">beach_access</mat-icon>
+          <div class="font-bold text-blue-900 dark:text-blue-300 text-base">Approved Leave</div>
+          <p class="text-xs text-blue-700 dark:text-blue-400">Reason: {{ leave.reason }}</p>
+          <p *ngIf="leave.startTime" class="text-xs font-semibold text-blue-600">Start Time: {{ formatTime(leave.startTime) }}</p>
+        </div>
+
+        <div *ngIf="selectedDay()?.isWeekend && !selectedDay()?.isHoliday" class="space-y-1">
+          <mat-icon class="!w-8 !h-8 !text-[32px] text-slate-400 mx-auto">weekend</mat-icon>
+          <div class="font-bold text-slate-700 dark:text-slate-300 text-base">Weekend Off</div>
+          <p class="text-xs text-slate-400">Scheduled weekly off day</p>
+        </div>
+
+        <div *ngIf="!selectedDay()?.isHoliday && !selectedDay()?.isWeekend && !selectedDay()?.leaveRequest" class="space-y-1">
+          <mat-icon class="!w-8 !h-8 !text-[32px] text-rose-500 mx-auto">event_busy</mat-icon>
+          <div class="font-bold text-rose-900 dark:text-rose-300 text-base">No Punch Recorded</div>
+          <p class="text-xs text-rose-700 dark:text-rose-400">You did not mark attendance on this working day.</p>
+        </div>
       </div>
     </ng-template>
 
@@ -247,22 +563,31 @@
       <button 
         type="button" 
         (click)="openRegularizationModal(selectedDay()?.dateStr); closeDetails()"
-        class="soft-btn !py-2 !px-4 text-xs font-semibold">
-        <mat-icon class="mr-1 !w-4 !h-4 !text-[16px]">edit_calendar</mat-icon>
+        class="soft-btn-primary !py-2 !px-4 text-xs font-bold flex items-center gap-1.5">
+        <mat-icon class="!w-4 !h-4 !text-[16px]">edit_calendar</mat-icon>
         Request Regularization
       </button>
-      <button type="button" (click)="closeDetails()" class="soft-btn !py-2 !px-4 text-xs font-semibold text-slate-600">Close</button>
+      <button type="button" (click)="closeDetails()" class="soft-btn !py-2 !px-4 text-xs font-semibold text-slate-600 dark:text-slate-400">
+        Close
+      </button>
     </div>
   </div>
 </div>
 
+<!-- ===================================================================== -->
 <!-- Request Regularization Modal -->
-<div *ngIf="showRegularizationModal()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-  <div class="surface !p-6 sm:!p-8 max-w-md w-full shadow-soft-surface-lg space-y-5 animate-in fade-in zoom-in-95">
+<!-- ===================================================================== -->
+<div *ngIf="showRegularizationModal()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
+  <div class="surface !p-6 sm:!p-8 max-w-md w-full shadow-soft-surface-lg space-y-5 animate-in fade-in zoom-in-95 my-auto border border-slate-200/80 dark:border-slate-800">
     <div class="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800">
-      <div>
-        <h3 class="text-lg font-bold text-[#1F2937] dark:text-[#f8fafc]">Attendance Regularization</h3>
-        <p class="text-xs text-slate-400">Request correction for a missed punch</p>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 flex items-center justify-center">
+          <mat-icon class="!w-5 !h-5 !text-[20px]">edit_calendar</mat-icon>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-[#1F2937] dark:text-[#f8fafc]">Attendance Regularization</h3>
+          <p class="text-xs text-slate-400">Request correction for a missed or improper punch</p>
+        </div>
       </div>
       <button mat-icon-button (click)="closeRegularizationModal()" class="soft-btn !w-8 !h-8 !p-1 !rounded-full">
         <mat-icon class="!w-4 !h-4 !text-[18px]">close</mat-icon>
@@ -271,47 +596,63 @@
 
     <form [formGroup]="regForm" (ngSubmit)="submitRegularization()" class="space-y-4">
       <div>
-        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Date</label>
-        <mat-form-field appearance="outline" class="w-full">
-          <input matInput type="date" formControlName="date">
-          <mat-error *ngIf="regForm.get('date')?.hasError('required')">Date is required</mat-error>
-        </mat-form-field>
+        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Date</label>
+        <input 
+          type="date"
+          formControlName="date"
+          class="w-full h-11 px-3.5 rounded-xl bg-soft-bg border border-slate-200/80 dark:border-slate-700 text-sm font-medium text-[#1F2937] dark:text-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-soft-well-sm" />
+        <div *ngIf="regForm.get('date')?.invalid && regForm.get('date')?.touched" class="text-xs text-rose-500 font-semibold mt-1">
+          Date is required
+        </div>
       </div>
 
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Check In Time</label>
-          <mat-form-field appearance="outline" class="w-full">
-            <input matInput type="time" formControlName="requestedIn">
-            <mat-error *ngIf="regForm.get('requestedIn')?.hasError('required')">Check-in time is required</mat-error>
-          </mat-form-field>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Check In Time</label>
+          <input 
+            type="time"
+            formControlName="requestedIn"
+            class="w-full h-11 px-3.5 rounded-xl bg-soft-bg border border-slate-200/80 dark:border-slate-700 text-sm font-medium text-[#1F2937] dark:text-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-soft-well-sm" />
+          <div *ngIf="regForm.get('requestedIn')?.invalid && regForm.get('requestedIn')?.touched" class="text-xs text-rose-500 font-semibold mt-1">
+            Check-in time is required
+          </div>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Check Out Time</label>
-          <mat-form-field appearance="outline" class="w-full">
-            <input matInput type="time" [min]="regForm.get('requestedIn')?.value" formControlName="requestedOut">
-            <mat-error *ngIf="regForm.get('requestedOut')?.hasError('required')">Check-out time is required</mat-error>
-            <mat-error *ngIf="regForm.get('requestedOut')?.hasError('endBeforeStart')">Check-out time must be after check-in time</mat-error>
-          </mat-form-field>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Check Out Time</label>
+          <input 
+            type="time"
+            [min]="regForm.get('requestedIn')?.value"
+            formControlName="requestedOut"
+            class="w-full h-11 px-3.5 rounded-xl bg-soft-bg border border-slate-200/80 dark:border-slate-700 text-sm font-medium text-[#1F2937] dark:text-[#f8fafc] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-soft-well-sm" />
+          <div *ngIf="regForm.get('requestedOut')?.invalid && regForm.get('requestedOut')?.touched" class="text-xs text-rose-500 font-semibold mt-1">
+            <span *ngIf="regForm.get('requestedOut')?.hasError('required')">Check-out time is required</span>
+            <span *ngIf="regForm.get('requestedOut')?.hasError('endBeforeStart')">Must be after check-in time</span>
+          </div>
         </div>
       </div>
 
       <div>
-        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Reason for Regularization</label>
-        <mat-form-field appearance="outline" class="w-full">
-          <textarea matInput rows="3" formControlName="reason" placeholder="e.g. Forgot phone, network issue at office, field visit..."></textarea>
-          <mat-error *ngIf="regForm.get('reason')?.hasError('required')">Reason is required</mat-error>
-        </mat-form-field>
+        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Reason for Regularization</label>
+        <textarea 
+          rows="3"
+          formControlName="reason"
+          placeholder="e.g. Forgot phone, network issue at office, field visit, client meeting..."
+          class="w-full p-3 rounded-xl bg-soft-bg border border-slate-200/80 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-soft-well-sm"></textarea>
+        <div *ngIf="regForm.get('reason')?.invalid && regForm.get('reason')?.touched" class="text-xs text-rose-500 font-semibold mt-1">
+          Please provide a valid explanation (minimum 5 characters).
+        </div>
       </div>
 
       <div class="flex items-center justify-end gap-3 pt-2">
-        <button type="button" (click)="closeRegularizationModal()" class="soft-btn !py-2 !px-4 text-xs font-semibold text-slate-600">Cancel</button>
+        <button type="button" (click)="closeRegularizationModal()" class="soft-btn !py-2.5 !px-4 text-xs font-semibold text-slate-600 dark:text-slate-400">
+          Cancel
+        </button>
         <button 
           type="submit" 
           [disabled]="regForm.invalid || isSubmittingReg()"
-          class="soft-btn-primary !h-11 !px-6 text-xs font-bold">
-          <mat-spinner *ngIf="isSubmittingReg()" diameter="20" class="mr-2"></mat-spinner>
+          class="soft-btn-primary !h-11 !px-6 text-xs font-bold flex items-center gap-1.5">
+          <mat-spinner *ngIf="isSubmittingReg()" diameter="18" class="mr-2 !text-white"></mat-spinner>
           <span>{{ isSubmittingReg() ? 'Submitting...' : 'Submit Request' }}</span>
         </button>
       </div>

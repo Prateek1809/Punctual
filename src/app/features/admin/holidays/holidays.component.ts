@@ -13,6 +13,7 @@ import { SettingsService } from '../../../core/settings.service';
 import { AuthService } from '../../../core/auth.service';
 import { Holiday } from '../../../core/models';
 import { getISTDateString } from '../../../core/date-utils';
+import { ConfirmDialogService } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import * as XLSX from 'xlsx';
 
@@ -133,6 +134,7 @@ export class HolidaysComponent {
   private settingsService = inject(SettingsService);
   private snackBar = inject(MatSnackBar);
   public auth = inject(AuthService);
+  private confirmService = inject(ConfirmDialogService);
 
   todayDateStr = getISTDateString();
   selectedYear = signal(new Date().getFullYear());
@@ -319,7 +321,15 @@ export class HolidaysComponent {
   }
 
   async deleteHoliday(dateId: string, name: string) {
-    if (!confirm(`Are you sure you want to remove "${name}" on ${dateId}?`)) return;
+    const confirmed = await this.confirmService.confirm({
+      title: 'Remove Holiday',
+      message: `Are you sure you want to remove "${name}" on ${dateId}? It will no longer be considered a company holiday.`,
+      confirmText: 'Yes, Remove',
+      cancelText: 'Cancel',
+      isDestructive: true,
+      icon: 'delete'
+    });
+    if (!confirmed) return;
 
     this.deletingId.set(dateId);
     try {

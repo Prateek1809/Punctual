@@ -51,8 +51,10 @@ export interface LeaveRequest {
   userEmail?: string;
   leaveTypeId: string;
   startDate: string; // YYYY-MM-DD
+  startTime?: string | null; // HH:mm or time string (optional)
   endDate: string; // YYYY-MM-DD
   isHalfDay: boolean;
+  halfDayType?: 'first_half' | 'second_half' | null;
   days: number;
   reason: string;
   status: LeaveStatus;
@@ -61,6 +63,9 @@ export interface LeaveRequest {
   managerComment?: string;
   createdAt: string;
   decidedAt?: string;
+  editedBy?: string;
+  editedByName?: string;
+  editedAt?: string;
 }
 
 export interface LeaveBalance {

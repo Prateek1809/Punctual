@@ -1,1 +1,10 @@
-node_modules/\ndist/\nlib/
+node_modules/
+dist/
+lib/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+firebase-debug.log*
+.env
+.env.*
+!.env.example
