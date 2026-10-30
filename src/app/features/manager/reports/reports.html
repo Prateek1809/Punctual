@@ -1,0 +1,137 @@
+<div class="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
+  <!-- Top Header with Filters and Export Actions -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Reports & Export</h2>
+      <p class="text-slate-500 text-sm mt-0.5">
+        Monthly employee attendance records, working hours analysis, and spreadsheet downloads.
+      </p>
+    </div>
+
+    <!-- Export Action Buttons -->
+    <div class="flex items-center gap-2.5 self-start md:self-auto">
+      <button 
+        mat-stroked-button 
+        (click)="exportToCsv()" 
+        class="!h-11 !px-4 !rounded-xl">
+        <mat-icon class="mr-1 text-slate-600">description</mat-icon>
+        Export CSV
+      </button>
+
+      <button 
+        mat-flat-button 
+        color="primary" 
+        (click)="exportToExcel()" 
+        class="!h-11 !px-5 !rounded-xl !bg-emerald-600 hover:!bg-emerald-700">
+        <mat-icon class="mr-1">table_view</mat-icon>
+        Export Excel (.xlsx)
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter Controls Card -->
+  <div class="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm flex flex-wrap items-center gap-3">
+    <!-- Month -->
+    <mat-form-field appearance="outline" class="w-36 !mb-0" subscriptSizing="dynamic">
+      <mat-select [value]="selectedMonth()" (selectionChange)="selectedMonth.set($event.value)">
+        <mat-option *ngFor="let m of months" [value]="m.value">{{ m.name }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Year -->
+    <mat-form-field appearance="outline" class="w-28 !mb-0" subscriptSizing="dynamic">
+      <mat-select [value]="selectedYear()" (selectionChange)="selectedYear.set($event.value)">
+        <mat-option [value]="2025">2025</mat-option>
+        <mat-option [value]="2026">2026</mat-option>
+        <mat-option [value]="2027">2027</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Employee Filter -->
+    <mat-form-field appearance="outline" class="w-56 !mb-0" subscriptSizing="dynamic">
+      <mat-select [value]="selectedEmployeeUid()" (selectionChange)="selectedEmployeeUid.set($event.value)">
+        <mat-option value="all">All Employees</mat-option>
+        <mat-option *ngFor="let u of allUsers()" [value]="u.uid">{{ u.name }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <!-- Summary KPI Cards -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Employees</span>
+      <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
+        {{ summaryTotals().employeesCount }}
+      </div>
+      <span class="text-[11px] text-slate-400 mt-0.5 block">evaluated</span>
+    </div>
+
+    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+      <span class="text-xs font-bold text-emerald-600 uppercase tracking-wider">Total Present Marks</span>
+      <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
+        {{ summaryTotals().totalPresent }}
+      </div>
+      <span class="text-[11px] text-slate-400 mt-0.5 block">days recorded</span>
+    </div>
+
+    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+      <span class="text-xs font-bold text-amber-600 uppercase tracking-wider">Total Late Marks</span>
+      <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
+        {{ summaryTotals().totalLate }}
+      </div>
+      <span class="text-[11px] text-slate-400 mt-0.5 block">across team</span>
+    </div>
+
+    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+      <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Total Productive Hours</span>
+      <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
+        {{ summaryTotals().totalHours }}h
+      </div>
+      <span class="text-[11px] text-slate-400 mt-0.5 block">clocked this month</span>
+    </div>
+  </div>
+
+  <!-- Main Report Table -->
+  <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden p-6 sm:p-8">
+    <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
+      <h3 class="text-lg font-bold text-slate-900">
+        Monthly Summary &bull; {{ monthPrefix() }}
+      </h3>
+      <span class="text-xs text-slate-400 font-semibold">
+        {{ reportRows().length }} Record{{ reportRows().length === 1 ? '' : 's' }}
+      </span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-sm">
+        <thead>
+          <tr class="border-b border-slate-200 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <th class="py-3 px-4">Employee</th>
+            <th class="py-3 px-4">Present</th>
+            <th class="py-3 px-4">Late</th>
+            <th class="py-3 px-4">Half-Days</th>
+            <th class="py-3 px-4">Absences</th>
+            <th class="py-3 px-4">Leaves</th>
+            <th class="py-3 px-4">Total Hours</th>
+            <th class="py-3 px-4">Avg / Day</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr *ngFor="let row of reportRows()" class="hover:bg-slate-50 transition-colors">
+            <td class="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
+              <div>{{ row.name }}</div>
+              <div class="text-[11px] text-slate-400 font-normal">{{ row.email }}</div>
+            </td>
+            <td class="py-3.5 px-4 font-bold text-emerald-600">{{ row.presentDays }}</td>
+            <td class="py-3.5 px-4 font-bold text-amber-600">{{ row.lateDays }}</td>
+            <td class="py-3.5 px-4 text-orange-600">{{ row.halfDays }}</td>
+            <td class="py-3.5 px-4 text-rose-600">{{ row.absentDays }}</td>
+            <td class="py-3.5 px-4 text-blue-600">{{ row.leaveDays }}</td>
+            <td class="py-3.5 px-4 font-bold text-indigo-600 whitespace-nowrap">{{ row.totalWorkedHours }}</td>
+            <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">{{ row.avgHoursPerDay }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

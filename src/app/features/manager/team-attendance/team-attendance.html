@@ -1,0 +1,139 @@
+<div class="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Team Attendance</h2>
+      <p class="text-slate-500 text-sm mt-0.5">
+        Live today presence dashboard and monthly employee attendance matrix.
+      </p>
+    </div>
+
+    <!-- Quick Today Counters -->
+    <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto text-xs font-bold">
+      <span class="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+        {{ todaySummary().present }} Present Today
+      </span>
+      <span class="px-3 py-1.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+        {{ todaySummary().late }} Late
+      </span>
+      <span class="px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+        {{ todaySummary().onLeave }} On Leave
+      </span>
+      <span *ngIf="todaySummary().flagged > 0" class="px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">
+        {{ todaySummary().flagged }} Flagged Punch{{ todaySummary().flagged === 1 ? '' : 'es' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- SECTION 1: Today's Live Attendance Board -->
+  <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+      <div class="flex items-center gap-2.5">
+        <div class="w-3 h-3 rounded-full bg-emerald-500 animate-ping"></div>
+        <h3 class="text-lg font-bold text-slate-900">Live Status &bull; {{ todayDateStr | date:'fullDate' }}</h3>
+      </div>
+      <span class="text-xs text-slate-400 font-medium">{{ todaySummary().total }} Total Team Members</span>
+    </div>
+
+    <!-- Avatars Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div *ngFor="let m of todayBoard()" 
+           class="p-4 rounded-2xl border bg-slate-50 flex items-center justify-between gap-3 hover:shadow-md transition-all"
+           [ngClass]="{
+             'border-emerald-300 bg-emerald-50/30': m.status === 'present',
+             'border-amber-300 bg-amber-50/30': m.status === 'late',
+             'border-blue-300 bg-blue-50/30': m.status === 'leave',
+             'border-slate-200': m.status === 'not_punched'
+           }">
+        
+        <div class="flex items-center gap-3 min-w-0">
+          <!-- Avatar with Status Ring -->
+          <div class="relative shrink-0">
+            <div class="w-11 h-11 rounded-full text-white font-bold text-sm flex items-center justify-center shadow-inner"
+                 [ngClass]="{
+                   'bg-emerald-600': m.status === 'present',
+                   'bg-amber-500': m.status === 'late',
+                   'bg-blue-600': m.status === 'leave',
+                   'bg-slate-400': m.status === 'not_punched'
+                 }">
+              {{ getUserInitials(m.user.name) }}
+            </div>
+
+            <!-- Flag icon if outside office -->
+            <div *ngIf="m.isFlagged" class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center shadow" title="Flagged: Outside office punch">
+              <mat-icon class="!w-3 !h-3 !text-[12px]">flag</mat-icon>
+            </div>
+          </div>
+
+          <div class="min-w-0">
+            <div class="text-sm font-bold text-slate-900 truncate">{{ m.user.name }}</div>
+            <div class="text-[11px] text-slate-500 truncate">
+              <span *ngIf="m.checkInTime">In: {{ m.checkInTime }}</span>
+              <span *ngIf="m.workedDuration"> &bull; {{ m.workedDuration }}</span>
+              <span *ngIf="!m.checkInTime && m.status === 'leave'">Approved Leave</span>
+              <span *ngIf="!m.checkInTime && m.status === 'not_punched'">Not checked in</span>
+            </div>
+          </div>
+        </div>
+
+        <app-status-chip [status]="m.status"></app-status-chip>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: Team Monthly Grid Matrix -->
+  <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
+      <div>
+        <h3 class="text-lg font-bold text-slate-900">Monthly Team Grid</h3>
+        <p class="text-xs text-slate-400">P = Present, L = Late, H = Half Day, LV = Leave, A = Absent, — = Weekend</p>
+      </div>
+
+      <!-- Month & Year Selector -->
+      <div class="flex items-center gap-2">
+        <mat-form-field appearance="outline" class="w-36 !mb-0" subscriptSizing="dynamic">
+          <mat-select [value]="selectedMonth()" (selectionChange)="selectedMonth.set($event.value)">
+            <mat-option *ngFor="let m of months" [value]="m.value">{{ m.name }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="w-28 !mb-0" subscriptSizing="dynamic">
+          <mat-select [value]="selectedYear()" (selectionChange)="selectedYear.set($event.value)">
+            <mat-option [value]="2025">2025</mat-option>
+            <mat-option [value]="2026">2026</mat-option>
+            <mat-option [value]="2027">2027</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </div>
+
+    <!-- Matrix Table -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-center border-collapse text-xs">
+        <thead>
+          <tr class="border-b border-slate-200 font-bold text-slate-500">
+            <th class="py-2.5 px-3 text-left sticky left-0 bg-white z-10 w-44 shadow-sm">Employee</th>
+            <th *ngFor="let day of daysInMonth()" class="p-1 min-w-[28px]">
+              {{ day }}
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr *ngFor="let u of users()" class="hover:bg-slate-50/50">
+            <td class="py-2.5 px-3 text-left font-semibold text-slate-800 sticky left-0 bg-white z-10 shadow-sm whitespace-nowrap">
+              {{ u.name }}
+            </td>
+            <td *ngFor="let day of daysInMonth()" class="p-1">
+              <span 
+                class="inline-block w-6 h-6 rounded flex items-center justify-center text-[10px]"
+                [ngClass]="getMatrixCell(u.uid, day).colorClass"
+                [title]="u.name + ' - Day ' + day + ': ' + getMatrixCell(u.uid, day).title">
+                {{ getMatrixCell(u.uid, day).char }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

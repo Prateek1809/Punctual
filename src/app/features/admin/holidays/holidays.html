@@ -1,0 +1,115 @@
+<div class="space-y-6 sm:space-y-8 animate-in fade-in duration-300 max-w-4xl">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Holiday Calendar</h2>
+      <p class="text-slate-500 text-sm mt-0.5">
+        Manage official company holidays. These days are automatically excluded from employee leave counts.
+      </p>
+    </div>
+
+    <!-- Seed Holidays Action -->
+    <button 
+      mat-stroked-button 
+      (click)="seedHolidays()" 
+      [disabled]="isSeeding()"
+      class="!h-11 !px-4 !rounded-xl self-start sm:self-auto">
+      <mat-spinner *ngIf="isSeeding()" diameter="16" class="mr-2"></mat-spinner>
+      <mat-icon *ngIf="!isSeeding()" class="text-purple-600 mr-1">auto_awesome</mat-icon>
+      <span>Seed Standard Holidays</span>
+    </button>
+  </div>
+
+  <!-- Add Holiday Form Card -->
+  <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-4">
+    <div class="border-b border-slate-100 pb-3">
+      <h3 class="text-lg font-bold text-slate-900">Add New Holiday</h3>
+      <p class="text-xs text-slate-400">Specify holiday date and description</p>
+    </div>
+
+    <form [formGroup]="holidayForm" (ngSubmit)="addHoliday()" class="flex flex-col sm:flex-row sm:items-center gap-4">
+      <div class="w-full sm:w-56">
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Date</label>
+        <mat-form-field appearance="outline" class="w-full">
+          <input matInput type="date" formControlName="date">
+          <mat-error *ngIf="holidayForm.get('date')?.hasError('required')">Date is required</mat-error>
+        </mat-form-field>
+      </div>
+
+      <div class="flex-1">
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Holiday Name</label>
+        <mat-form-field appearance="outline" class="w-full">
+          <input matInput formControlName="name" placeholder="e.g. Diwali, Republic Day, Christmas...">
+          <mat-error *ngIf="holidayForm.get('name')?.hasError('required')">Name is required</mat-error>
+        </mat-form-field>
+      </div>
+
+      <div class="sm:self-center sm:pt-4">
+        <button 
+          mat-flat-button 
+          color="primary" 
+          type="submit" 
+          [disabled]="holidayForm.invalid || isAdding()"
+          class="!h-12 !px-6 !rounded-xl !bg-indigo-600 whitespace-nowrap">
+          <mat-spinner *ngIf="isAdding()" diameter="18" class="mr-2"></mat-spinner>
+          <span>{{ isAdding() ? 'Adding...' : 'Add Holiday' }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Holidays List Card -->
+  <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 sm:p-8 space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+      <div>
+        <h3 class="text-lg font-bold text-slate-900">Scheduled Holidays ({{ filteredHolidays().length }})</h3>
+        <p class="text-xs text-slate-400">For calendar year {{ selectedYear() }}</p>
+      </div>
+
+      <!-- Year Selector -->
+      <mat-form-field appearance="outline" class="w-28 !mb-0" subscriptSizing="dynamic">
+        <mat-select [value]="selectedYear()" (selectionChange)="selectedYear.set($event.value)">
+          <mat-option [value]="2025">2025</mat-option>
+          <mat-option [value]="2026">2026</mat-option>
+          <mat-option [value]="2027">2027</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div *ngIf="filteredHolidays().length > 0; else noHolidays" class="divide-y divide-slate-100">
+      <div *ngFor="let h of filteredHolidays()" class="py-3.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-xl transition-colors">
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+            <mat-icon class="!w-5 !h-5 !text-[20px]">celebration</mat-icon>
+          </div>
+          <div>
+            <div class="font-bold text-slate-900 text-sm">{{ h.name }}</div>
+            <div class="text-xs text-slate-500">{{ h.date | date:'fullDate' }}</div>
+          </div>
+        </div>
+
+        <button 
+          mat-icon-button 
+          color="warn" 
+          [disabled]="deletingId() === h.date"
+          (click)="deleteHoliday(h.date, h.name)" 
+          matTooltip="Delete Holiday">
+          <mat-spinner *ngIf="deletingId() === h.date" diameter="16"></mat-spinner>
+          <mat-icon *ngIf="deletingId() !== h.date">delete_outline</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <ng-template #noHolidays>
+      <div class="py-10 text-center space-y-3">
+        <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+          <mat-icon>calendar_today</mat-icon>
+        </div>
+        <div class="text-slate-800 font-semibold">No holidays listed for {{ selectedYear() }}</div>
+        <p class="text-xs text-slate-500 max-w-sm mx-auto">
+          Add holidays manually above, or click "Seed Standard Holidays" to populate national holidays.
+        </p>
+      </div>
+    </ng-template>
+  </div>
+</div>

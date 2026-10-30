@@ -1,0 +1,134 @@
+<div class="min-h-screen flex bg-slate-50">
+  <!-- Left Side: Form -->
+  <div class="flex-1 flex flex-col justify-center py-12 px-6 sm:px-10 lg:px-16 xl:px-24">
+    <div class="mx-auto w-full max-w-sm lg:max-w-md">
+      <!-- Brand Logo / Title -->
+      <div class="flex items-center gap-3 mb-8">
+        <img src="favicon.svg" alt="Punctual Logo" class="w-11 h-11 rounded-2xl shadow-md shadow-indigo-100" />
+        <span class="text-2xl font-bold tracking-tight text-slate-900">Punctual</span>
+      </div>
+
+      <div>
+        <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight">Welcome back</h2>
+        <p class="mt-2 text-sm text-slate-600">
+          Sign in to mark your daily attendance, apply for leaves, and view records.
+        </p>
+      </div>
+
+      <div class="mt-8">
+        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-5">
+          <!-- Email field -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Email address</label>
+            <mat-form-field appearance="outline" class="w-full">
+              <input matInput type="email" formControlName="email" placeholder="you@company.com" autocomplete="email">
+              <mat-icon matPrefix class="text-slate-400 mr-2">email</mat-icon>
+              <mat-error *ngIf="loginForm.get('email')?.hasError('required')">Email is required</mat-error>
+              <mat-error *ngIf="loginForm.get('email')?.hasError('email')">Please enter a valid email address</mat-error>
+            </mat-form-field>
+          </div>
+
+          <!-- Password field -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-sm font-medium text-slate-700">Password</label>
+              <button type="button" (click)="openForgotPassword()" class="text-sm font-medium text-indigo-600 hover:text-indigo-500 hover:underline">
+                Forgot password?
+              </button>
+            </div>
+            <mat-form-field appearance="outline" class="w-full">
+              <input matInput [type]="hidePassword() ? 'password' : 'text'" formControlName="password" placeholder="••••••••" autocomplete="current-password">
+              <mat-icon matPrefix class="text-slate-400 mr-2">lock</mat-icon>
+              <button mat-icon-button matSuffix type="button" (click)="hidePassword.set(!hidePassword())" [attr.aria-label]="'Hide password'">
+                <mat-icon class="text-slate-400">{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+              </button>
+              <mat-error *ngIf="loginForm.get('password')?.hasError('required')">Password is required</mat-error>
+            </mat-form-field>
+          </div>
+
+          <!-- Submit Button -->
+          <button 
+            type="submit" 
+            [disabled]="loginForm.invalid || isLoading()" 
+            class="w-full h-12 flex items-center justify-center rounded-xl bg-indigo-600 text-white font-semibold shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.99] transition-all disabled:opacity-50 disabled:pointer-events-none">
+            <mat-spinner *ngIf="isLoading()" diameter="20" class="mr-2"></mat-spinner>
+            <span>{{ isLoading() ? 'Signing in...' : 'Sign in' }}</span>
+          </button>
+        </form>
+
+        <div class="mt-8 pt-6 border-t border-slate-200">
+          <p class="text-xs text-slate-500 text-center">
+            Punctual &bull; Enterprise Attendance & Leave Management
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side: Visual Showcase Panel -->
+  <div class="hidden lg:flex flex-1 relative bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 text-white overflow-hidden items-center justify-center p-12">
+    <!-- Background glow circles -->
+    <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-teal-500/20 blur-3xl pointer-events-none"></div>
+
+    <div class="relative max-w-lg space-y-6">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-xs font-medium">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        Smart Office Verification & Leave Engine
+      </div>
+      
+      <h1 class="text-4xl font-extrabold tracking-tight sm:text-5xl leading-tight">
+        Seamless attendance. Effortless leave approvals.
+      </h1>
+      
+      <p class="text-lg text-indigo-200/90 leading-relaxed">
+        Verify attendance through office geofencing and network IP, track leave balances in real time, and gain total team visibility.
+      </p>
+
+      <div class="grid grid-cols-2 gap-4 pt-6">
+        <div class="p-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/10">
+          <div class="text-2xl font-bold text-emerald-400">100%</div>
+          <div class="text-xs text-indigo-200 mt-1">Accurate IST Time Clock</div>
+        </div>
+        <div class="p-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/10">
+          <div class="text-2xl font-bold text-amber-300">Geo & IP</div>
+          <div class="text-xs text-indigo-200 mt-1">Multi-mode Office Verification</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div *ngIf="showForgotModal()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+    <div class="flex items-center justify-between">
+      <h3 class="text-lg font-bold text-slate-900">Reset your password</h3>
+      <button mat-icon-button (click)="closeForgotPassword()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <p class="text-sm text-slate-600">
+      Enter your work email address and we'll send you a link to reset your password.
+    </p>
+    <div>
+      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Work Email</label>
+      <input 
+        type="email" 
+        [value]="forgotEmail()" 
+        (input)="forgotEmail.set($any($event.target).value)" 
+        placeholder="you@company.com" 
+        class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+    </div>
+    <div class="flex justify-end gap-3 pt-2">
+      <button mat-button (click)="closeForgotPassword()">Cancel</button>
+      <button 
+        mat-flat-button 
+        color="primary" 
+        (click)="sendResetEmail()" 
+        [disabled]="isResetting()">
+        {{ isResetting() ? 'Sending...' : 'Send Reset Link' }}
+      </button>
+    </div>
+  </div>
+</div>

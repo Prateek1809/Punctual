@@ -1,0 +1,504 @@
+<div class="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
+  
+  <!-- ======================================================== -->
+  <!-- 1. EMPLOYEE DASHBOARD VIEW                               -->
+  <!-- ======================================================== -->
+  <ng-container *ngIf="isEmployee()">
+    <!-- Top Greeting Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          Good day, {{ userProfile()?.name || auth.user()?.displayName || 'Employee' }}! 👋
+        </h2>
+        <p class="text-slate-500 text-sm mt-0.5">
+          Today is {{ todayDateStr | date:'fullDate' }} &bull; Standard IST Time
+        </p>
+      </div>
+
+      <!-- Active Status Badge -->
+      <div class="self-start sm:self-auto">
+        <span *ngIf="isCompletedForToday()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+          <mat-icon class="!w-4 !h-4 !text-[16px]">check_circle</mat-icon>
+          Attendance Completed
+        </span>
+        <span *ngIf="isPunchedIn()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200 animate-pulse">
+          <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+          Currently Working
+        </span>
+        <span *ngIf="!isPunchedIn() && !isCompletedForToday()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+          <mat-icon class="!w-4 !h-4 !text-[16px]">schedule</mat-icon>
+          Not Checked In Yet
+        </span>
+      </div>
+    </div>
+
+    <!-- Primary Grid: Punch Card (Left) & Key Metric Cards (Right) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <!-- Center Punch Hero Card (7 Cols) -->
+      <div class="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm relative overflow-hidden flex flex-col items-center text-center">
+        <!-- Decorative background blur -->
+        <div class="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-indigo-50 blur-2xl pointer-events-none"></div>
+
+        <!-- Live Clock Display -->
+        <div class="mb-4">
+          <div class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 font-mono">
+            {{ currentTime() }}
+          </div>
+          <p class="text-xs text-slate-400 uppercase tracking-widest mt-1 font-semibold">
+            Indian Standard Time (IST)
+          </p>
+        </div>
+
+        <!-- Big Interactive Punch Button -->
+        <div class="relative my-4 flex items-center justify-center">
+          <!-- Pulse effect when working -->
+          <div *ngIf="isPunchedIn()" class="absolute w-44 h-44 rounded-full bg-rose-400/20 animate-ping pointer-events-none"></div>
+          <div *ngIf="!isPunchedIn() && !isCompletedForToday()" class="absolute w-44 h-44 rounded-full bg-emerald-400/20 animate-pulse pointer-events-none"></div>
+
+          <button 
+            type="button"
+            (click)="handlePunch()"
+            [disabled]="isPunching() || isCompletedForToday()"
+            class="w-36 h-36 sm:w-40 sm:h-40 rounded-full flex flex-col items-center justify-center text-white shadow-xl transition-all duration-300 transform active:scale-95 disabled:opacity-80 disabled:cursor-not-allowed group"
+            [ngClass]="{
+              'bg-gradient-to-tr from-emerald-600 to-teal-500 shadow-emerald-200 hover:shadow-emerald-300': !isPunchedIn() && !isCompletedForToday(),
+              'bg-gradient-to-tr from-rose-600 to-red-500 shadow-rose-200 hover:shadow-rose-300': isPunchedIn(),
+              'bg-gradient-to-tr from-slate-600 to-slate-500 shadow-slate-200': isCompletedForToday()
+            }">
+            <mat-spinner *ngIf="isPunching()" diameter="36" strokeWidth="3" class="mb-2 !text-white"></mat-spinner>
+            
+            <mat-icon *ngIf="!isPunching()" class="!w-12 !h-12 !text-[48px] leading-[48px] mb-1 group-hover:scale-110 transition-transform">
+              {{ isCompletedForToday() ? 'done_all' : isPunchedIn() ? 'logout' : 'touch_app' }}
+            </mat-icon>
+            
+            <span class="text-sm font-bold tracking-wide uppercase">
+              {{ punchButtonLabel() }}
+            </span>
+          </button>
+        </div>
+
+        <!-- Working Time / Status Headline -->
+        <div class="mt-2 min-h-[3rem] flex flex-col items-center justify-center">
+          <p *ngIf="isPunchedIn()" class="text-sm sm:text-base font-semibold text-slate-800">
+            Checked in at {{ checkInFormatted() }} &bull; <span class="text-indigo-600 font-bold">{{ workedDurationText() }}</span> worked
+          </p>
+          <p *ngIf="isCompletedForToday()" class="text-sm sm:text-base font-semibold text-slate-700">
+            Day completed &bull; Total time worked: <span class="text-emerald-600 font-bold">{{ workedDurationText() }}</span>
+          </p>
+          <p *ngIf="!isPunchedIn() && !isCompletedForToday()" class="text-sm text-slate-500">
+            Office verification will run automatically via Geofencing or IP.
+          </p>
+
+          <!-- Location Verification Chip -->
+          <div class="mt-3">
+            <div *ngIf="todayAttendance()?.punchInMeta as meta" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
+                 [ngClass]="meta.verified ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'">
+              <mat-icon class="!w-4 !h-4 !text-[16px]">
+                {{ meta.verified ? 'location_on' : 'warning_amber' }}
+              </mat-icon>
+              <span>
+                {{ meta.verified ? 'At Office (' + (meta.distanceM ? meta.distanceM + 'm' : 'Verified') + ')' : 'Outside Office (Sent to manager for review)' }}
+              </span>
+            </div>
+
+            <div *ngIf="!todayAttendance()" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+              <mat-icon class="!w-4 !h-4 !text-[16px]">verified_user</mat-icon>
+              <span>Attendance Geofence Active</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CheckIn & CheckOut Times summary -->
+        <div class="w-full grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-100">
+          <div class="text-center">
+            <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Checked In</span>
+            <span class="text-lg font-bold text-slate-800">{{ checkInFormatted() }}</span>
+          </div>
+          <div class="text-center border-l border-slate-100">
+            <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Checked Out</span>
+            <span class="text-lg font-bold text-slate-800">{{ checkOutFormatted() }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Balance & Monthly KPIs (5 Cols) -->
+      <div class="lg:col-span-5 space-y-6">
+        <!-- Leave Balance Ring Card -->
+        <div class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-sm relative overflow-hidden">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Leave Balance ({{ currentYear }})</h3>
+            <a routerLink="/leaves" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+              Apply Leave &rarr;
+            </a>
+          </div>
+
+          <div class="flex items-center gap-6">
+            <!-- Progress Circle SVG -->
+            <div class="relative w-24 h-24 shrink-0 flex items-center justify-center">
+              <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                <!-- Background Circle -->
+                <path class="text-slate-100" stroke-width="3.5" stroke="currentColor" fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <!-- Foreground Value Circle -->
+                <path class="text-indigo-600 transition-all duration-700 ease-out" stroke-dasharray="100, 100"
+                      [attr.stroke-dashoffset]="100 - leaveProgressPercentage()"
+                      stroke-linecap="round" stroke-width="3.5" stroke="currentColor" fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span class="text-xl font-extrabold text-slate-900 leading-none">{{ remainingLeaveDays() }}</span>
+                <span class="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Days</span>
+              </div>
+            </div>
+
+            <div class="space-y-1.5 flex-1">
+              <div class="text-base font-bold text-slate-800">
+                {{ remainingLeaveDays() }} of {{ allottedLeaveDays() }} Days Left
+              </div>
+              <p class="text-xs text-slate-500 leading-relaxed">
+                1.5 days accrued per month in your unified leave pool.
+              </p>
+              <div class="pt-1">
+                <span class="text-xs font-medium text-slate-400">
+                  Used: <span class="font-bold text-slate-700">{{ leaveBalance()?.balances?.unified?.used || 0 }} days</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Month Attendance Summary Cards -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-bold uppercase tracking-wider">Days Present</span>
+              <mat-icon class="!w-5 !h-5 !text-[20px] text-emerald-500">task_alt</mat-icon>
+            </div>
+            <div class="mt-3">
+              <span class="text-2xl font-black text-slate-900">{{ daysPresentThisMonth() }}</span>
+              <span class="text-xs text-slate-500 ml-1.5">days</span>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-bold uppercase tracking-wider">Late Marks</span>
+              <mat-icon class="!w-5 !h-5 !text-[20px] text-amber-500">alarm_on</mat-icon>
+            </div>
+            <div class="mt-3">
+              <span class="text-2xl font-black text-slate-900" [class.text-amber-600]="lateMarksThisMonth() > 0">
+                {{ lateMarksThisMonth() }}
+              </span>
+              <span class="text-xs text-slate-500 ml-1.5">times</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Next Holiday Card -->
+        <div class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                <mat-icon class="!w-4 !h-4 !text-[18px]">celebration</mat-icon>
+              </div>
+              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Next Holiday</span>
+            </div>
+            <span *ngIf="nextHoliday()" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100">
+              {{ nextHoliday()?.daysAwayText }}
+            </span>
+          </div>
+
+          <div *ngIf="nextHoliday(); else noHoliday">
+            <div class="text-lg font-bold text-slate-900">{{ nextHoliday()?.name }}</div>
+            <div class="text-sm text-slate-500 mt-0.5">{{ nextHoliday()?.date | date:'fullDate' }}</div>
+          </div>
+          <ng-template #noHoliday>
+            <p class="text-sm text-slate-500 italic">No upcoming holidays scheduled for this month.</p>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+
+  <!-- ======================================================== -->
+  <!-- 2. MANAGER & ADMIN DASHBOARD VIEW                        -->
+  <!-- ======================================================== -->
+  <ng-container *ngIf="isManagerOrAdmin()">
+    <!-- Top Greeting & Header for Management -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Welcome back, {{ userProfile()?.name || auth.user()?.displayName || 'Manager' }}!
+          </h2>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider"
+                [ngClass]="isAdmin() ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' : 'bg-teal-100 text-teal-800 border border-teal-200'">
+            {{ isAdmin() ? 'Administrator' : 'Manager' }}
+          </span>
+        </div>
+        <p class="text-slate-500 text-sm mt-0.5">
+          Today is {{ todayDateStr | date:'fullDate' }} &bull; Employee Attendance & Leave Overview
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <a routerLink="/manager/team-attendance" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs shadow-sm flex items-center gap-2">
+          <mat-icon class="!w-4 !h-4 !text-[16px]">groups</mat-icon>
+          Live Board
+        </a>
+        <a routerLink="/manager/approvals" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-sm flex items-center gap-2">
+          <mat-icon class="!w-4 !h-4 !text-[16px]">fact_check</mat-icon>
+          Pending ({{ pendingApprovals().length }})
+        </a>
+      </div>
+    </div>
+
+    <!-- 4 Key Team Stat Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <!-- Present Employees -->
+      <a routerLink="/manager/team-attendance" class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm hover:border-emerald-300 hover:shadow-md transition-all group">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Present Today</span>
+          <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <mat-icon class="!w-5 !h-5 !text-[20px]">how_to_reg</mat-icon>
+          </div>
+        </div>
+        <div class="mt-4 flex items-baseline gap-2">
+          <span class="text-3xl font-black text-slate-900">{{ presentEmployeesCount() }}</span>
+          <span class="text-xs text-slate-400 font-medium">/ {{ activeEmployeesCount() }} Employees</span>
+        </div>
+        <div class="mt-2 text-xs text-emerald-600 font-medium">
+          View real-time check-ins &rarr;
+        </div>
+      </a>
+
+      <!-- On Leave Today -->
+      <a routerLink="/manager/team-calendar" class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm hover:border-purple-300 hover:shadow-md transition-all group">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">On Leave Today</span>
+          <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <mat-icon class="!w-5 !h-5 !text-[20px]">beach_access</mat-icon>
+          </div>
+        </div>
+        <div class="mt-4 flex items-baseline gap-2">
+          <span class="text-3xl font-black text-slate-900">{{ onLeaveEmployeesCount() }}</span>
+          <span class="text-xs text-slate-400 font-medium">Employees off</span>
+        </div>
+        <div class="mt-2 text-xs text-purple-600 font-medium">
+          View team calendar &rarr;
+        </div>
+      </a>
+
+      <!-- Pending Approvals -->
+      <a routerLink="/manager/approvals" class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm hover:border-amber-300 hover:shadow-md transition-all group">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pending Approvals</span>
+          <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <mat-icon class="!w-5 !h-5 !text-[20px]">pending_actions</mat-icon>
+          </div>
+        </div>
+        <div class="mt-4 flex items-baseline gap-2">
+          <span class="text-3xl font-black text-slate-900" [class.text-amber-600]="pendingApprovals().length > 0">
+            {{ pendingApprovals().length }}
+          </span>
+          <span class="text-xs text-slate-400 font-medium">Requests waiting</span>
+        </div>
+        <div class="mt-2 text-xs text-amber-600 font-medium">
+          {{ pendingApprovals().length > 0 ? 'Action required &rarr;' : 'All caught up' }}
+        </div>
+      </a>
+
+      <!-- Flagged Punches -->
+      <a routerLink="/manager/flagged-punches" class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm hover:border-rose-300 hover:shadow-md transition-all group">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Flagged Punches</span>
+          <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <mat-icon class="!w-5 !h-5 !text-[20px]">flag</mat-icon>
+          </div>
+        </div>
+        <div class="mt-4 flex items-baseline gap-2">
+          <span class="text-3xl font-black text-slate-900" [class.text-rose-600]="flaggedPunches().length > 0">
+            {{ flaggedPunches().length }}
+          </span>
+          <span class="text-xs text-slate-400 font-medium">Outside office</span>
+        </div>
+        <div class="mt-2 text-xs text-rose-600 font-medium">
+          {{ flaggedPunches().length > 0 ? 'Review locations &rarr;' : 'No violations' }}
+        </div>
+      </a>
+    </div>
+
+    <!-- Management Quick Hub & Today's Attendance Stream -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <!-- Today's Employee Check-ins Stream (7 Cols) -->
+      <div class="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-sm">
+        <div class="flex items-center justify-between mb-5">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <mat-icon class="!w-4 !h-4 !text-[18px]">history</mat-icon>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900">Today's Employee Punches</h3>
+              <p class="text-xs text-slate-400">Live employee check-in activity</p>
+            </div>
+          </div>
+          <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
+            {{ todayPunchList().length }} Punched In
+          </span>
+        </div>
+
+        <div *ngIf="todayPunchList().length > 0; else noPunchesToday" class="divide-y divide-slate-100">
+          <div *ngFor="let punch of todayPunchList()" class="py-3 flex items-center justify-between hover:bg-slate-50/70 px-2 rounded-xl transition-colors">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center">
+                {{ punch.userName.slice(0, 2).toUpperCase() }}
+              </div>
+              <div>
+                <div class="text-xs font-semibold text-slate-900">{{ punch.userName }}</div>
+                <div class="text-[11px] text-slate-400 flex items-center gap-2">
+                  <span>In: <strong class="text-slate-700">{{ punch.checkInTime }}</strong></span>
+                  <span *ngIf="punch.punchInMeta?.verified" class="inline-flex items-center text-[10px] text-emerald-600 font-semibold gap-0.5">
+                    <mat-icon class="!w-3 !h-3 !text-[12px]">check</mat-icon> Office
+                  </span>
+                  <span *ngIf="!punch.punchInMeta?.verified" class="inline-flex items-center text-[10px] text-amber-600 font-semibold gap-0.5">
+                    <mat-icon class="!w-3 !h-3 !text-[12px]">warning</mat-icon> Flagged
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <app-status-chip [status]="punch.status"></app-status-chip>
+            </div>
+          </div>
+        </div>
+
+        <ng-template #noPunchesToday>
+          <div class="py-12 text-center text-sm text-slate-400 flex flex-col items-center">
+            <mat-icon class="!w-10 !h-10 !text-[40px] text-slate-300 mb-2">schedule</mat-icon>
+            <p>No employees have punched in yet today.</p>
+          </div>
+        </ng-template>
+      </div>
+
+      <!-- Quick Action Modules (5 Cols) -->
+      <div class="lg:col-span-5 space-y-4">
+        <div class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm">
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Management Modules</h3>
+          
+          <div class="space-y-3">
+            <a routerLink="/manager/approvals" class="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-slate-50 border border-slate-100 transition-colors">
+              <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <mat-icon>fact_check</mat-icon>
+              </div>
+              <div class="flex-1">
+                <div class="text-xs font-bold text-slate-900">Pending Approvals</div>
+                <div class="text-[11px] text-slate-500">Review leave and regularization requests</div>
+              </div>
+              <mat-icon class="text-slate-300 !w-4 !h-4 !text-[16px]">chevron_right</mat-icon>
+            </a>
+
+            <a routerLink="/manager/team-attendance" class="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-slate-50 border border-slate-100 transition-colors">
+              <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <mat-icon>groups</mat-icon>
+              </div>
+              <div class="flex-1">
+                <div class="text-xs font-bold text-slate-900">Monthly Team Grid</div>
+                <div class="text-[11px] text-slate-500">Monthly matrix of all employee attendance</div>
+              </div>
+              <mat-icon class="text-slate-300 !w-4 !h-4 !text-[16px]">chevron_right</mat-icon>
+            </a>
+
+            <a routerLink="/manager/reports" class="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-slate-50 border border-slate-100 transition-colors">
+              <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <mat-icon>table_view</mat-icon>
+              </div>
+              <div class="flex-1">
+                <div class="text-xs font-bold text-slate-900">Attendance Reports</div>
+                <div class="text-[11px] text-slate-500">Summary metrics & Excel/CSV download</div>
+              </div>
+              <mat-icon class="text-slate-300 !w-4 !h-4 !text-[16px]">chevron_right</mat-icon>
+            </a>
+
+            <ng-container *ngIf="isAdmin()">
+              <a routerLink="/admin/employees" class="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-slate-50 border border-slate-100 transition-colors">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                  <mat-icon>badge</mat-icon>
+                </div>
+                <div class="flex-1">
+                  <div class="text-xs font-bold text-slate-900">Employee Directory</div>
+                  <div class="text-[11px] text-slate-500">Add, edit roles, or deactivate staff</div>
+                </div>
+                <mat-icon class="text-slate-300 !w-4 !h-4 !text-[16px]">chevron_right</mat-icon>
+              </a>
+
+              <a routerLink="/admin/policy" class="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-slate-50 border border-slate-100 transition-colors">
+                <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+                  <mat-icon>share_location</mat-icon>
+                </div>
+                <div class="flex-1">
+                  <div class="text-xs font-bold text-slate-900">Attendance Policy</div>
+                  <div class="text-[11px] text-slate-500">Geofence radius, office map & IP whitelist</div>
+                </div>
+                <mat-icon class="text-slate-300 !w-4 !h-4 !text-[16px]">chevron_right</mat-icon>
+              </a>
+            </ng-container>
+          </div>
+        </div>
+
+        <!-- Next Upcoming Holiday Card -->
+        <div class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Next Holiday</span>
+            <span *ngIf="nextHoliday()" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700">
+              {{ nextHoliday()?.daysAwayText }}
+            </span>
+          </div>
+          <div *ngIf="nextHoliday(); else noHol">
+            <div class="text-base font-bold text-slate-900">{{ nextHoliday()?.name }}</div>
+            <div class="text-xs text-slate-500 mt-0.5">{{ nextHoliday()?.date | date:'fullDate' }}</div>
+          </div>
+          <ng-template #noHol>
+            <p class="text-xs text-slate-400 italic">No upcoming holidays scheduled for this month.</p>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- Teammates On Leave Today Row (Shared by both views) -->
+  <div class="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2.5">
+        <mat-icon class="text-slate-400">group_off</mat-icon>
+        <h3 class="text-base font-bold text-slate-900">Employees on leave today</h3>
+      </div>
+      <span class="text-xs font-semibold text-slate-400">
+        {{ onLeaveEmployeesCount() }} Employee{{ onLeaveEmployeesCount() === 1 ? '' : 's' }} Out
+      </span>
+    </div>
+
+    <div *ngIf="teammatesOnLeaveToday().length > 0; else noLeaves" class="flex flex-wrap gap-3">
+      <div *ngFor="let member of teammatesOnLeaveToday()" 
+           class="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-slate-50 border border-slate-200/70 hover:bg-slate-100 transition-colors"
+           [matTooltip]="member.reason ? 'Reason: ' + member.reason : member.name">
+        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center shadow-inner">
+          {{ member.initials }}
+        </div>
+        <div>
+          <div class="text-xs font-semibold text-slate-800">{{ member.name }}</div>
+          <div class="text-[10px] text-slate-400">
+            {{ member.isHalfDay ? 'Half Day Leave' : 'Full Day Leave' }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #noLeaves>
+      <div class="py-4 text-center text-sm text-slate-400">
+        🎉 All employees are available today! No approved leaves.
+      </div>
+    </ng-template>
+  </div>
+</div>

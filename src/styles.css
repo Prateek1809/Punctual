@@ -1,0 +1,182 @@
+@import 'leaflet/dist/leaflet.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Scrollbars & Utilities */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.7);
+}
+
+/* Material theme overrides and transitions */
+.mat-mdc-card {
+  border-radius: 1rem !important;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Heatmap day styles */
+.calendar-tile {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.calendar-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ======================================================== */
+/* GLOBAL DARK THEME STYLING                                */
+/* ======================================================== */
+
+html.dark,
+body.dark {
+  background-color: #0b1120 !important;
+  color: #f1f5f9 !important;
+  color-scheme: dark;
+}
+
+/* Dark mode surfaces and cards */
+.dark .bg-\[\#F6F7FB\] {
+  background-color: #0b1120 !important;
+}
+
+.dark .bg-white {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+.dark header.bg-white,
+.dark aside.bg-white,
+.dark nav.bg-white {
+  background-color: #111827 !important;
+  border-color: #1f2937 !important;
+}
+
+.dark .bg-slate-50 {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: #334155 !important;
+}
+
+/* Dark mode text overrides */
+.dark .text-slate-900 {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-800 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-slate-400 {
+  color: #64748b !important;
+}
+
+/* Dark mode borders */
+.dark .border-slate-200,
+.dark .border-slate-200\/80,
+.dark .border-slate-200\/70,
+.dark .border-slate-100 {
+  border-color: #334155 !important;
+}
+
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #334155 !important;
+}
+
+/* Dark mode hover states */
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-slate-50\/70:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Dark mode inputs, selects & form controls */
+.dark input:not([type='checkbox']):not([type='radio']),
+.dark select,
+.dark textarea {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Dark mode Material Dialogs, Menus, Modals */
+.dark .mat-mdc-menu-panel,
+.dark .mat-mdc-dialog-container .mdc-dialog__surface,
+.dark .mdc-dialog__surface {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
+}
+
+.dark .mat-mdc-menu-item {
+  color: #e2e8f0 !important;
+}
+
+.dark .mat-mdc-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.dark .mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-color: #1e293b;
+  --mdc-snackbar-supporting-text-color: #f8fafc;
+}
+
+/* Dark mode table headers and cells */
+.dark table th {
+  background-color: #0f172a !important;
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+}
+
+.dark table td {
+  border-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+.dark table tr:hover td {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Dark mode calendar tile */
+.dark .calendar-tile {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+/* Smooth theme transition */
+body, header, aside, main, nav, div {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}

@@ -1,0 +1,252 @@
+<div class="h-screen flex flex-col bg-[#F6F7FB] overflow-hidden" [class.dark]="isDarkMode()">
+  <!-- Top Navigation Header -->
+  <header class="h-16 bg-white border-b border-slate-200/80 flex items-center justify-between px-4 lg:px-6 z-20 shrink-0">
+    <div class="flex items-center gap-3">
+      <button mat-icon-button (click)="toggleSidebar()" class="text-slate-600 hover:text-slate-900" title="Toggle Navigation">
+        <mat-icon>menu</mat-icon>
+      </button>
+
+      <div class="flex items-center gap-2.5">
+        <img src="favicon.svg" alt="Punctual Logo" class="w-9 h-9 rounded-xl shadow-sm" />
+        <span class="text-xl font-bold text-slate-900 tracking-tight">Punctual</span>
+      </div>
+    </div>
+
+    <!-- Right Header Elements -->
+    <div class="flex items-center gap-3 sm:gap-4">
+      <!-- Live IST Clock Pill -->
+      <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+        <span>IST {{ currentTime() }}</span>
+      </div>
+
+      <!-- Theme Toggle -->
+      <button mat-icon-button (click)="toggleDarkMode()" [matTooltip]="isDarkMode() ? 'Light Mode' : 'Dark Mode'">
+        <mat-icon class="text-slate-600">{{ isDarkMode() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+      </button>
+
+      <!-- Profile Menu Button -->
+      <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
+        <button [matMenuTriggerFor]="profileMenu" class="flex items-center gap-2.5 py-1 px-1.5 rounded-xl hover:bg-slate-100 transition-colors">
+          <div class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-inner">
+            {{ userInitials() }}
+          </div>
+          <div class="hidden md:flex flex-col text-left">
+            <span class="text-xs font-semibold text-slate-800 leading-tight">
+              {{ userProfile()?.name || authService.user()?.displayName || 'User' }}
+            </span>
+            <span class="text-[10px] text-slate-500 capitalize">
+              {{ currentRole() }}
+            </span>
+          </div>
+          <mat-icon class="text-slate-400 !w-4 !h-4 !text-[16px]">expand_more</mat-icon>
+        </button>
+
+        <mat-menu #profileMenu="matMenu" xPosition="before" class="!rounded-2xl !p-1 shadow-xl">
+          <div class="px-4 py-2 border-b border-slate-100">
+            <p class="text-xs font-semibold text-slate-900">{{ userProfile()?.name || 'User' }}</p>
+            <p class="text-[11px] text-slate-500 truncate">{{ userProfile()?.email || authService.user()?.email }}</p>
+            <div class="mt-1.5 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider"
+                 [ngClass]="{
+                   'bg-indigo-100 text-indigo-700': currentRole() === 'admin',
+                   'bg-teal-100 text-teal-700': currentRole() === 'manager',
+                   'bg-slate-100 text-slate-700': currentRole() === 'employee'
+                 }">
+              {{ currentRole() }}
+            </div>
+          </div>
+          <button mat-menu-item (click)="logout()">
+            <mat-icon class="text-rose-600">logout</mat-icon>
+            <span class="text-rose-600 font-medium text-xs">Sign out</span>
+          </button>
+        </mat-menu>
+      </div>
+    </div>
+  </header>
+
+  <div class="flex-1 flex overflow-hidden relative">
+    <!-- Sidebar Navigation -->
+    <aside 
+      class="fixed inset-y-0 left-0 top-16 z-30 w-64 bg-white border-r border-slate-200/80 transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 overflow-y-auto"
+      [class.-translate-x-full]="!sidebarOpen()">
+      <div class="p-3 space-y-6">
+        <!-- Main Navigation Section -->
+        <div>
+          <div class="px-3 pb-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            Overview
+          </div>
+          <nav class="space-y-1">
+            <a routerLink="/dashboard" routerLinkActive="bg-indigo-50 text-indigo-700 font-semibold" [routerLinkActiveOptions]="{exact: true}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium">
+              <mat-icon class="!w-5 !h-5 !text-[20px] text-slate-500">dashboard</mat-icon>
+              <span>Dashboard</span>
+            </a>
+            <a *ngIf="isEmployee()" routerLink="/attendance" routerLinkActive="bg-indigo-50 text-indigo-700 font-semibold"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium">
+              <mat-icon class="!w-5 !h-5 !text-[20px] text-slate-500">calendar_month</mat-icon>
+              <span>My Attendance</span>
+            </a>
+            <a *ngIf="isEmployee()" routerLink="/leaves" routerLinkActive="bg-indigo-50 text-indigo-700 font-semibold"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium">
+              <mat-icon class="!w-5 !h-5 !text-[20px] text-slate-500">beach_access</mat-icon>
+              <span>Leave Management</span>
+            </a>
+          </nav>
+        </div>
+
+        <!-- Manager Section -->
+        <div *ngIf="isManagerOrAdmin()">
+          <div class="px-3 pb-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+            <span>Management</span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded bg-teal-50 text-teal-700 font-medium">Team</span>
+          </div>
+          <nav class="space-y-1">
+            <a routerLink="/manager/approvals" routerLinkActive="bg-teal-50 text-teal-800 font-semibold"
+               class="flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium">
+              <div class="flex items-center gap-3">
+                <mat-icon class="!w-5 !h-5 !text-[20px] text-slate-500">fact_check</mat-icon>
+                <span>Pending Approvals</span>
+              </div>
+              <span *ngIf="pendingLeavesCount().length > 0" 
+                    class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500 text-white">
+                {{ pendingLeavesCount().length }}
+              </span>
+            </a>
+
+            <a routerLink="/manager/team-attendance" routerLinkActive="bg-teal-50 text-teal-800 font-semibold"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium">
+              <mat-icon class="!w-5 !h-5 !text-[20px] text-slate-500">groups</mat-icon>
+              <span>Team Attendance</span>
+            </a>
+
+            <a routerLink="/manager/team-calendar" routerLinkActive="bg-teal-50 text-teal-800 font-semibold"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium">
+              <mat-icon class="!w-5 !h-5 !text-[20px] text-slate-500">event_note</mat-icon>
+              <span>Team Calendar</span>
+            </a>
+
+            <a routerLink="/manager/flagged-punches" routerLinkActive="bg-teal-50 text-teal-800 font-semibold"
+               class="flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium">
+              <div class="flex items-center gap-3">
+                <mat-icon class="!w-5 !h-5 !text-[20px] text-slate-500">flag</mat-icon>
+                <span>Flagged Punches</span>
+              </div>
+              <span *ngIf="flaggedPunchesCount().length > 0" 
+                    class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500 text-white">
+                {{ flaggedPunchesCount().length }}
+              </span>
+            </a>
+
+            <a routerLink="/manager/reports" routerLinkActive="bg-teal-50 text-teal-800 font-semibold"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium">
+              <mat-icon class="!w-5 !h-5 !text-[20px] text-slate-500">analytics</mat-icon>
+              <span>Reports & Export</span>
+            </a>
+          </nav>
+        </div>
+
+        <!-- Admin Section -->
+        <div *ngIf="isAdmin()">
+          <div class="px-3 pb-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+            <span>Administration</span>
+            <span class="text-[10px] px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-medium">Admin</span>
+          </div>
+          <nav class="space-y-1">
+            <a routerLink="/admin/employees" routerLinkActive="bg-indigo-50 text-indigo-700 font-semibold"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium">
+              <mat-icon class="!w-5 !h-5 !text-[20px] text-slate-500">badge</mat-icon>
+              <span>Employees</span>
+            </a>
+
+            <a routerLink="/admin/attendance-policy" routerLinkActive="bg-indigo-50 text-indigo-700 font-semibold"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium">
+              <mat-icon class="!w-5 !h-5 !text-[20px] text-slate-500">pin_drop</mat-icon>
+              <span>Attendance Policy</span>
+            </a>
+
+            <a routerLink="/admin/settings" routerLinkActive="bg-indigo-50 text-indigo-700 font-semibold"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium">
+              <mat-icon class="!w-5 !h-5 !text-[20px] text-slate-500">tune</mat-icon>
+              <span>Company Settings</span>
+            </a>
+
+            <a routerLink="/admin/holidays" routerLinkActive="bg-indigo-50 text-indigo-700 font-semibold"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium">
+              <mat-icon class="!w-5 !h-5 !text-[20px] text-slate-500">celebration</mat-icon>
+              <span>Holiday Calendar</span>
+            </a>
+
+            <a routerLink="/admin/corrections" routerLinkActive="bg-indigo-50 text-indigo-700 font-semibold"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium">
+              <mat-icon class="!w-5 !h-5 !text-[20px] text-slate-500">edit_calendar</mat-icon>
+              <span>Attendance Corrections</span>
+            </a>
+
+            <a routerLink="/admin/audit-logs" routerLinkActive="bg-indigo-50 text-indigo-700 font-semibold"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors text-sm font-medium">
+              <mat-icon class="!w-5 !h-5 !text-[20px] text-slate-500">history</mat-icon>
+              <span>Audit Logs</span>
+            </a>
+          </nav>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Overlay backdrop for mobile sidebar -->
+    <div 
+      *ngIf="sidebarOpen()" 
+      (click)="sidebarOpen.set(false)" 
+      class="fixed inset-0 top-16 bg-slate-900/40 backdrop-blur-sm z-20 lg:hidden">
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
+      <div class="max-w-7xl mx-auto">
+        <router-outlet></router-outlet>
+      </div>
+    </main>
+  </div>
+
+  <!-- Mobile Bottom Navigation Bar (Easy Thumb Access) -->
+  <nav class="lg:hidden fixed bottom-0 inset-x-0 h-16 bg-white border-t border-slate-200 flex items-center justify-around z-30 shadow-lg px-2">
+    <a routerLink="/dashboard" routerLinkActive="text-indigo-600 font-bold" [routerLinkActiveOptions]="{exact: true}"
+       class="flex flex-col items-center justify-center flex-1 py-1 text-slate-500 hover:text-indigo-600 transition-colors">
+      <mat-icon class="!w-5 !h-5 !text-[20px]">dashboard</mat-icon>
+      <span class="text-[10px] mt-0.5">Home</span>
+    </a>
+
+    <ng-container *ngIf="isEmployee()">
+      <a routerLink="/attendance" routerLinkActive="text-indigo-600 font-bold"
+         class="flex flex-col items-center justify-center flex-1 py-1 text-slate-500 hover:text-indigo-600 transition-colors">
+        <mat-icon class="!w-5 !h-5 !text-[20px]">calendar_month</mat-icon>
+        <span class="text-[10px] mt-0.5">Attendance</span>
+      </a>
+
+      <a routerLink="/leaves" routerLinkActive="text-indigo-600 font-bold"
+         class="flex flex-col items-center justify-center flex-1 py-1 text-slate-500 hover:text-indigo-600 transition-colors">
+        <mat-icon class="!w-5 !h-5 !text-[20px]">beach_access</mat-icon>
+        <span class="text-[10px] mt-0.5">Leaves</span>
+      </a>
+    </ng-container>
+
+    <ng-container *ngIf="isManagerOrAdmin()">
+      <a routerLink="/manager/approvals" routerLinkActive="text-indigo-600 font-bold"
+         class="flex flex-col items-center justify-center flex-1 py-1 text-slate-500 hover:text-indigo-600 transition-colors relative">
+        <mat-icon class="!w-5 !h-5 !text-[20px]">fact_check</mat-icon>
+        <span class="text-[10px] mt-0.5">Approvals</span>
+        <span *ngIf="pendingLeavesCount().length > 0" class="absolute top-1 right-5 w-2 h-2 rounded-full bg-amber-500"></span>
+      </a>
+
+      <a routerLink="/manager/team-attendance" routerLinkActive="text-indigo-600 font-bold"
+         class="flex flex-col items-center justify-center flex-1 py-1 text-slate-500 hover:text-indigo-600 transition-colors">
+        <mat-icon class="!w-5 !h-5 !text-[20px]">groups</mat-icon>
+        <span class="text-[10px] mt-0.5">Team</span>
+      </a>
+    </ng-container>
+
+    <button (click)="toggleSidebar()" class="flex flex-col items-center justify-center flex-1 py-1 text-slate-500 hover:text-indigo-600 transition-colors">
+      <mat-icon class="!w-5 !h-5 !text-[20px]">menu</mat-icon>
+      <span class="text-[10px] mt-0.5">Menu</span>
+    </button>
+  </nav>
+</div>

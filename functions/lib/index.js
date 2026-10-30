@@ -1,0 +1,911 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.locationRetentionJob = exports.yearlyReset = exports.monthlyLeaveAllocation = exports.nightlyAttendanceJob = exports.reviewRegularization = exports.requestRegularization = exports.adminCorrectAttendance = exports.reviewPunch = exports.cancelLeave = exports.rejectLeave = exports.approveLeave = exports.punchOut = exports.punchIn = exports.updateEmployee = exports.createEmployee = exports.setupInitialAdmin = exports.checkSetupRequired = void 0;
+const https_1 = require("firebase-functions/v2/https");
+const scheduler_1 = require("firebase-functions/v2/scheduler");
+const v2_1 = require("firebase-functions/v2");
+const app_1 = require("firebase-admin/app");
+const firestore_1 = require("firebase-admin/firestore");
+const auth_1 = require("firebase-admin/auth");
+(0, v2_1.setGlobalOptions)({ region: 'us-central1' });
+(0, app_1.initializeApp)();
+const db = (0, firestore_1.getFirestore)();
+const auth = (0, auth_1.getAuth)();
+// Haversine formula for distance in meters
+function distanceM(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const rad = (d) => (d * Math.PI) / 180;
+    const dLat = rad(lat2 - lat1);
+    const dLon = rad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+}
+// Helper to get client IP from request
+function getClientIp(req) {
+    if (!req)
+        return '';
+    const forwarded = req.headers ? req.headers['x-forwarded-for'] : '';
+    if (typeof forwarded === 'string') {
+        return forwarded.split(',')[0].trim();
+    }
+    return req.ip || req.connection?.remoteAddress || '';
+}
+// Helper to get current IST date & time
+function getISTDateTime() {
+    const istString = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+    const now = new Date(istString);
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+    return { now, dateStr, timeStr };
+}
+// -------------------------------------------------------------
+// 0. Initial System Setup Wizard
+// -------------------------------------------------------------
+exports.checkSetupRequired = (0, https_1.onCall)(async () => {
+    try {
+        const usersSnap = await db.collection('users').limit(1).get();
+        return { setupRequired: usersSnap.empty };
+    }
+    catch (error) {
+        return { setupRequired: false, error: error.message };
+    }
+});
+exports.setupInitialAdmin = (0, https_1.onCall)(async (request) => {
+    const data = request.data || {};
+    const usersSnap = await db.collection('users').limit(1).get();
+    if (!usersSnap.empty) {
+        throw new https_1.HttpsError('failed-precondition', 'Initial admin setup has already been completed.');
+    }
+    const { adminName, adminEmail, adminPassword, officeName = 'Head Office', officeLat = 19.0760, officeLng = 72.8777, radiusM = 200, officeStart = '10:10', officeEnd = '19:30', graceMinutes = 10, seedHolidays = true, } = data;
+    if (!adminName || !adminEmail || !adminPassword) {
+        throw new https_1.HttpsError('invalid-argument', 'Admin name, email and password are required');
+    }
+    try {
+        // 1. Create Admin User
+        const userRecord = await auth.createUser({
+            email: adminEmail,
+            password: adminPassword,
+            displayName: adminName,
+        });
+        await auth.setCustomUserClaims(userRecord.uid, { role: 'admin' });
+        const { dateStr } = getISTDateTime();
+        const currentYear = dateStr.split('-')[0];
+        // 2. Set Admin Document in users
+        await db.collection('users').doc(userRecord.uid).set({
+            name: adminName,
+            email: adminEmail,
+            role: 'admin',
+            managerId: null,
+            joinDate: dateStr,
+            isActive: true,
+        });
+        // 3. Initialize Company Settings
+        const companySettings = {
+            officeStart,
+            officeEnd,
+            graceMinutes: Number(graceMinutes),
+            weeklyOffs: [0, 6], // Sunday, Saturday
+            halfDayMinutes: 270,
+            fullDayMinutes: 540,
+            yearStartMonth: 1,
+            monthlyQuota: 1.5,
+            attendancePolicy: {
+                mode: 'either',
+                onFailure: 'flag',
+                allowedIps: ['127.0.0.1'],
+                maxAccuracyM: 300,
+                offices: [
+                    {
+                        name: officeName,
+                        lat: Number(officeLat),
+                        lng: Number(officeLng),
+                        radiusM: Number(radiusM),
+                    },
+                ],
+            },
+        };
+        await db.collection('settings').doc('company').set(companySettings, { merge: true });
+        // 5. Seed Standard Holidays if requested
+        if (seedHolidays) {
+            const year = Number(currentYear);
+            const holidays = [
+                { date: `${year}-01-26`, name: 'Republic Day' },
+                { date: `${year}-03-25`, name: 'Holi' },
+                { date: `${year}-04-14`, name: 'Ambedkar Jayanti' },
+                { date: `${year}-05-01`, name: 'Maharashtra Day / May Day' },
+                { date: `${year}-08-15`, name: 'Independence Day' },
+                { date: `${year}-10-02`, name: 'Gandhi Jayanti' },
+                { date: `${year}-10-20`, name: 'Dussehra' },
+                { date: `${year}-11-01`, name: 'Diwali' },
+                { date: `${year}-12-25`, name: 'Christmas Day' },
+            ];
+            const batch = db.batch();
+            for (const h of holidays) {
+                batch.set(db.collection('holidays').doc(h.date), h);
+            }
+            await batch.commit();
+        }
+        // 6. Audit Log
+        await db.collection('auditLogs').add({
+            actorUid: userRecord.uid,
+            actorName: adminName,
+            action: 'INITIAL_SYSTEM_SETUP',
+            targetId: userRecord.uid,
+            after: {
+                adminEmail,
+                officeName,
+                officeCoordinates: `${officeLat}, ${officeLng}`,
+            },
+            timestamp: new Date().toISOString(),
+        });
+        return { success: true, uid: userRecord.uid, email: adminEmail };
+    }
+    catch (error) {
+        throw new https_1.HttpsError('internal', error.message);
+    }
+});
+// -------------------------------------------------------------
+// 1. User Management Functions
+// -------------------------------------------------------------
+exports.createEmployee = (0, https_1.onCall)(async (request) => {
+    const context = request;
+    const data = request.data || {};
+    if (!context.auth || context.auth.token.role !== 'admin') {
+        throw new https_1.HttpsError('permission-denied', 'Only admins can create employees.');
+    }
+    const { email, password, name, role = 'employee', managerId } = data;
+    if (!email || !password || !name) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing email, password, or name');
+    }
+    try {
+        const userRecord = await auth.createUser({
+            email,
+            password,
+            displayName: name,
+        });
+        const userRole = role === 'admin' || role === 'manager' ? role : 'employee';
+        await auth.setCustomUserClaims(userRecord.uid, { role: userRole });
+        const { dateStr } = getISTDateTime();
+        const currentYear = dateStr.split('-')[0];
+        // Create user profile
+        await db.collection('users').doc(userRecord.uid).set({
+            name,
+            email,
+            role: userRole,
+            managerId: managerId || null,
+            joinDate: dateStr,
+            isActive: true,
+        });
+        // Create opening leave balance only for employees (18 days annual unified pool)
+        if (userRole === 'employee') {
+            await db.collection('leaveBalances').doc(`${userRecord.uid}_${currentYear}`).set({
+                uid: userRecord.uid,
+                year: currentYear,
+                balances: {
+                    unified: {
+                        allotted: 18,
+                        used: 0,
+                    },
+                },
+            });
+        }
+        // Audit Log
+        await db.collection('auditLogs').add({
+            actorUid: context.auth.uid,
+            actorName: context.auth.token.name || context.auth.token.email || 'Admin',
+            action: 'CREATE_EMPLOYEE',
+            targetId: userRecord.uid,
+            after: { name, email, role: userRole, managerId: managerId || null },
+            timestamp: new Date().toISOString(),
+        });
+        return { uid: userRecord.uid };
+    }
+    catch (error) {
+        throw new https_1.HttpsError('internal', error.message);
+    }
+});
+exports.updateEmployee = (0, https_1.onCall)(async (request) => {
+    const context = request;
+    const data = request.data || {};
+    if (!context.auth || context.auth.token.role !== 'admin') {
+        throw new https_1.HttpsError('permission-denied', 'Only admins can update employees.');
+    }
+    const { uid, role, managerId, isActive, name } = data;
+    if (!uid) {
+        throw new https_1.HttpsError('invalid-argument', 'User ID is required');
+    }
+    const userDocRef = db.collection('users').doc(uid);
+    const userDoc = await userDocRef.get();
+    if (!userDoc.exists) {
+        throw new https_1.HttpsError('not-found', 'User not found');
+    }
+    const before = userDoc.data();
+    const updates = {};
+    if (role && (role === 'employee' || role === 'manager' || role === 'admin')) {
+        updates.role = role;
+        await auth.setCustomUserClaims(uid, { role });
+    }
+    if (managerId !== undefined)
+        updates.managerId = managerId || null;
+    if (isActive !== undefined)
+        updates.isActive = Boolean(isActive);
+    if (name)
+        updates.name = name;
+    await userDocRef.update(updates);
+    await db.collection('auditLogs').add({
+        actorUid: context.auth.uid,
+        actorName: context.auth.token.name || context.auth.token.email || 'Admin',
+        action: 'UPDATE_EMPLOYEE',
+        targetId: uid,
+        before,
+        after: updates,
+        timestamp: new Date().toISOString(),
+    });
+    return { success: true };
+});
+// -------------------------------------------------------------
+// 2. Attendance Actions: punchIn & punchOut
+// -------------------------------------------------------------
+exports.punchIn = (0, https_1.onCall)(async (request) => {
+    const context = request;
+    const data = request.data || {};
+    if (!context.auth)
+        throw new https_1.HttpsError('unauthenticated', 'Not signed in');
+    const uid = context.auth.uid;
+    const { lat = 0, lng = 0, accuracy = 999999 } = data;
+    const clientIp = data?.clientIp || getClientIp(request.rawRequest);
+    const { now, dateStr } = getISTDateTime();
+    const docId = `${uid}_${dateStr}`;
+    const attendanceRef = db.collection('attendance').doc(docId);
+    // Check if user is active and has employee role
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists || userDoc.data()?.isActive === false) {
+        throw new https_1.HttpsError('permission-denied', 'Account is deactivated.');
+    }
+    if (userDoc.data()?.role !== 'employee') {
+        throw new https_1.HttpsError('failed-precondition', 'Attendance marking is only for employees. Admins and Managers do not need to punch in.');
+    }
+    // Double punch check
+    const existingDoc = await attendanceRef.get();
+    if (existingDoc.exists && existingDoc.data()?.checkIn) {
+        throw new https_1.HttpsError('failed-precondition', 'Already punched in for today.');
+    }
+    // Load Company Settings & Policy
+    const settingsDoc = await db.collection('settings').doc('company').get();
+    const settings = settingsDoc.data() || {};
+    const policy = settings.attendancePolicy || {
+        mode: 'either',
+        onFailure: 'flag',
+        allowedIps: [],
+        maxAccuracyM: 300,
+        offices: [],
+    };
+    // Location & IP Verification
+    let closestDistanceM = 9999999;
+    let geoMatched = false;
+    if (policy.offices && policy.offices.length > 0 && lat && lng) {
+        for (const office of policy.offices) {
+            const dist = distanceM(lat, lng, office.lat, office.lng);
+            if (dist < closestDistanceM) {
+                closestDistanceM = Math.round(dist);
+            }
+            if (dist <= office.radiusM && accuracy <= (policy.maxAccuracyM || 300)) {
+                geoMatched = true;
+            }
+        }
+    }
+    // IP Matching
+    const allowedIps = policy.allowedIps || [];
+    const ipMatched = allowedIps.some(ip => ip.trim() === clientIp.trim() || clientIp.includes(ip.trim()));
+    // Mode verification logic: off | ip | geo | both | either
+    let verified = false;
+    switch (policy.mode) {
+        case 'off':
+            verified = true;
+            break;
+        case 'ip':
+            verified = ipMatched;
+            break;
+        case 'geo':
+            verified = geoMatched;
+            break;
+        case 'both':
+            verified = ipMatched && geoMatched;
+            break;
+        case 'either':
+        default:
+            verified = ipMatched || geoMatched;
+            break;
+    }
+    // Policy onFailure: block vs flag
+    if (!verified && policy.onFailure === 'block') {
+        throw new https_1.HttpsError('failed-precondition', 'You must be at the office to punch in (office location or IP mismatch).');
+    }
+    // Calculate late status
+    const [startH, startM] = (settings.officeStart || '10:10').split(':').map(Number);
+    const graceMinutes = Number(settings.graceMinutes ?? 10);
+    const expectedStartTime = startH * 60 + startM;
+    const actualTime = now.getHours() * 60 + now.getMinutes();
+    let status = 'present';
+    if (actualTime > expectedStartTime + graceMinutes) {
+        status = 'late';
+    }
+    const reviewStatus = verified ? 'none' : 'pending';
+    const punchInMeta = {
+        ip: clientIp,
+        lat,
+        lng,
+        accuracy,
+        distanceM: closestDistanceM < 9999999 ? closestDistanceM : null,
+        ipMatched,
+        geoMatched,
+        verified,
+        method: policy.mode,
+        userAgent: request.rawRequest?.headers?.['user-agent'] || '',
+        time: now.toISOString(),
+    };
+    await attendanceRef.set({
+        uid,
+        date: dateStr,
+        checkIn: now.toISOString(),
+        status,
+        punchInMeta,
+        reviewStatus,
+    }, { merge: true });
+    return {
+        status,
+        verified,
+        reviewStatus,
+        checkIn: now.toISOString(),
+        distanceM: punchInMeta.distanceM,
+    };
+});
+exports.punchOut = (0, https_1.onCall)(async (request) => {
+    const context = request;
+    const data = request.data || {};
+    if (!context.auth)
+        throw new https_1.HttpsError('unauthenticated', 'Not signed in');
+    const uid = context.auth.uid;
+    const { lat = 0, lng = 0, accuracy = 999999 } = data;
+    const clientIp = data?.clientIp || getClientIp(request.rawRequest);
+    const { now, dateStr } = getISTDateTime();
+    const docId = `${uid}_${dateStr}`;
+    const attendanceRef = db.collection('attendance').doc(docId);
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists || userDoc.data()?.role !== 'employee') {
+        throw new https_1.HttpsError('failed-precondition', 'Attendance marking is only for employees.');
+    }
+    return await db.runTransaction(async (transaction) => {
+        const doc = await transaction.get(attendanceRef);
+        if (!doc.exists || !doc.data()?.checkIn) {
+            throw new https_1.HttpsError('failed-precondition', 'Must punch in first');
+        }
+        const attData = doc.data();
+        if (attData.checkOut) {
+            throw new https_1.HttpsError('failed-precondition', 'Already punched out today');
+        }
+        const checkInTime = new Date(attData.checkIn).getTime();
+        const workedMinutes = Math.max(0, Math.floor((now.getTime() - checkInTime) / 60000));
+        const settingsDoc = await transaction.get(db.collection('settings').doc('company'));
+        const settings = settingsDoc.data() || {};
+        const halfDayMinutes = Number(settings.halfDayMinutes || 270); // 4.5h
+        let status = attData.status;
+        if (workedMinutes < halfDayMinutes) {
+            status = 'half-day';
+        }
+        const punchOutMeta = {
+            ip: clientIp,
+            lat,
+            lng,
+            accuracy,
+            time: now.toISOString(),
+            userAgent: request.rawRequest?.headers?.['user-agent'] || '',
+        };
+        transaction.update(attendanceRef, {
+            checkOut: now.toISOString(),
+            workedMinutes,
+            status,
+            punchOutMeta,
+        });
+        return {
+            success: true,
+            workedMinutes,
+            status,
+            checkOut: now.toISOString(),
+        };
+    });
+});
+// -------------------------------------------------------------
+// 3. Leave Actions: approveLeave, rejectLeave, cancelLeave
+// -------------------------------------------------------------
+exports.approveLeave = (0, https_1.onCall)(async (request) => {
+    const context = request;
+    const data = request.data || {};
+    if (!context.auth ||
+        (context.auth.token.role !== 'manager' && context.auth.token.role !== 'admin')) {
+        throw new https_1.HttpsError('permission-denied', 'Managers and Admins only');
+    }
+    const { requestId, comment = '' } = data;
+    if (!requestId) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing requestId');
+    }
+    const leaveRef = db.collection('leaveRequests').doc(requestId);
+    return await db.runTransaction(async (transaction) => {
+        const doc = await transaction.get(leaveRef);
+        if (!doc.exists)
+            throw new https_1.HttpsError('not-found', 'Leave request not found');
+        const leaveData = doc.data();
+        if (leaveData.status !== 'pending') {
+            throw new https_1.HttpsError('failed-precondition', 'Leave is not pending');
+        }
+        const year = leaveData.startDate.split('-')[0];
+        const balanceRef = db.collection('leaveBalances').doc(`${leaveData.uid}_${year}`);
+        const balanceDoc = await transaction.get(balanceRef);
+        let balanceData = balanceDoc.data();
+        if (!balanceData) {
+            balanceData = {
+                uid: leaveData.uid,
+                year,
+                balances: { unified: { allotted: 18, used: 0 } },
+            };
+        }
+        const currentUsed = balanceData.balances?.unified?.used || 0;
+        const currentAllotted = balanceData.balances?.unified?.allotted || 18;
+        const daysRequested = Number(leaveData.days || 1);
+        if (currentUsed + daysRequested > currentAllotted) {
+            throw new https_1.HttpsError('failed-precondition', `Insufficient leave balance. Remaining: ${currentAllotted - currentUsed}, Requested: ${daysRequested}`);
+        }
+        balanceData.balances.unified.used = currentUsed + daysRequested;
+        transaction.set(balanceRef, balanceData, { merge: true });
+        transaction.update(leaveRef, {
+            status: 'approved',
+            decidedBy: context.auth.uid,
+            decidedByName: context.auth.token.name || context.auth.token.email || 'Manager',
+            managerComment: comment,
+            decidedAt: new Date().toISOString(),
+        });
+        // Write audit log
+        const auditRef = db.collection('auditLogs').doc();
+        transaction.set(auditRef, {
+            actorUid: context.auth.uid,
+            actorName: context.auth.token.name || context.auth.token.email || 'Manager',
+            action: 'APPROVE_LEAVE',
+            targetId: requestId,
+            before: { status: 'pending' },
+            after: { status: 'approved', managerComment: comment, days: daysRequested },
+            timestamp: new Date().toISOString(),
+        });
+        return { success: true };
+    });
+});
+exports.rejectLeave = (0, https_1.onCall)(async (request) => {
+    const context = request;
+    const data = request.data || {};
+    if (!context.auth ||
+        (context.auth.token.role !== 'manager' && context.auth.token.role !== 'admin')) {
+        throw new https_1.HttpsError('permission-denied', 'Managers and Admins only');
+    }
+    const { requestId, comment = '' } = data;
+    if (!requestId) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing requestId');
+    }
+    const leaveRef = db.collection('leaveRequests').doc(requestId);
+    return await db.runTransaction(async (transaction) => {
+        const doc = await transaction.get(leaveRef);
+        if (!doc.exists)
+            throw new https_1.HttpsError('not-found', 'Leave request not found');
+        const leaveData = doc.data();
+        if (leaveData.status !== 'pending') {
+            throw new https_1.HttpsError('failed-precondition', 'Leave is not pending');
+        }
+        transaction.update(leaveRef, {
+            status: 'rejected',
+            decidedBy: context.auth.uid,
+            decidedByName: context.auth.token.name || context.auth.token.email || 'Manager',
+            managerComment: comment,
+            decidedAt: new Date().toISOString(),
+        });
+        const auditRef = db.collection('auditLogs').doc();
+        transaction.set(auditRef, {
+            actorUid: context.auth.uid,
+            actorName: context.auth.token.name || context.auth.token.email || 'Manager',
+            action: 'REJECT_LEAVE',
+            targetId: requestId,
+            before: { status: 'pending' },
+            after: { status: 'rejected', managerComment: comment },
+            timestamp: new Date().toISOString(),
+        });
+        return { success: true };
+    });
+});
+exports.cancelLeave = (0, https_1.onCall)(async (request) => {
+    const context = request;
+    const data = request.data || {};
+    if (!context.auth)
+        throw new https_1.HttpsError('unauthenticated', 'Not signed in');
+    const { requestId } = data;
+    if (!requestId) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing requestId');
+    }
+    const leaveRef = db.collection('leaveRequests').doc(requestId);
+    return await db.runTransaction(async (transaction) => {
+        const doc = await transaction.get(leaveRef);
+        if (!doc.exists)
+            throw new https_1.HttpsError('not-found', 'Leave request not found');
+        const leaveData = doc.data();
+        const isOwner = leaveData.uid === context.auth.uid;
+        const isPrivileged = context.auth.token.role === 'manager' || context.auth.token.role === 'admin';
+        if (!isOwner && !isPrivileged) {
+            throw new https_1.HttpsError('permission-denied', 'Not authorized to cancel this leave');
+        }
+        if (leaveData.status === 'cancelled' || leaveData.status === 'rejected') {
+            throw new https_1.HttpsError('failed-precondition', 'Leave is already cancelled or rejected');
+        }
+        // If leave was approved, restore the used balance
+        if (leaveData.status === 'approved') {
+            const year = leaveData.startDate.split('-')[0];
+            const balanceRef = db.collection('leaveBalances').doc(`${leaveData.uid}_${year}`);
+            const balanceDoc = await transaction.get(balanceRef);
+            if (balanceDoc.exists) {
+                const balanceData = balanceDoc.data();
+                const currentUsed = balanceData.balances?.unified?.used || 0;
+                const restoredUsed = Math.max(0, currentUsed - Number(leaveData.days || 1));
+                balanceData.balances.unified.used = restoredUsed;
+                transaction.set(balanceRef, balanceData, { merge: true });
+            }
+        }
+        transaction.update(leaveRef, {
+            status: 'cancelled',
+            decidedAt: new Date().toISOString(),
+        });
+        const auditRef = db.collection('auditLogs').doc();
+        transaction.set(auditRef, {
+            actorUid: context.auth.uid,
+            actorName: context.auth.token.name || context.auth.token.email || 'User',
+            action: 'CANCEL_LEAVE',
+            targetId: requestId,
+            before: { status: leaveData.status },
+            after: { status: 'cancelled' },
+            timestamp: new Date().toISOString(),
+        });
+        return { success: true };
+    });
+});
+// -------------------------------------------------------------
+// 4. Flagged Punch Review & Attendance Correction
+// -------------------------------------------------------------
+exports.reviewPunch = (0, https_1.onCall)(async (request) => {
+    const context = request;
+    const data = request.data || {};
+    if (!context.auth ||
+        (context.auth.token.role !== 'manager' && context.auth.token.role !== 'admin')) {
+        throw new https_1.HttpsError('permission-denied', 'Managers and Admins only');
+    }
+    const { attendanceId, action, comment = '' } = data; // action: 'approve' | 'reject'
+    if (!attendanceId || !action) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing attendanceId or action');
+    }
+    const attRef = db.collection('attendance').doc(attendanceId);
+    return await db.runTransaction(async (transaction) => {
+        const doc = await transaction.get(attRef);
+        if (!doc.exists)
+            throw new https_1.HttpsError('not-found', 'Attendance record not found');
+        const att = doc.data();
+        const before = { status: att.status, reviewStatus: att.reviewStatus };
+        let newStatus = att.status;
+        let newReviewStatus = action === 'approve' ? 'approved' : 'rejected';
+        if (action === 'approve') {
+            // If punch was flagged, convert to present (or keep late if punched late)
+            if (att.status === 'pending_review' || att.status === 'absent') {
+                newStatus = 'present';
+            }
+        }
+        else {
+            // Rejected flagged punch
+            newStatus = 'absent';
+        }
+        transaction.update(attRef, {
+            status: newStatus,
+            reviewStatus: newReviewStatus,
+            managerComment: comment,
+            reviewedBy: context.auth.uid,
+            reviewedAt: new Date().toISOString(),
+        });
+        const auditRef = db.collection('auditLogs').doc();
+        transaction.set(auditRef, {
+            actorUid: context.auth.uid,
+            actorName: context.auth.token.name || context.auth.token.email || 'Manager',
+            action: action === 'approve' ? 'APPROVE_FLAGGED_PUNCH' : 'REJECT_FLAGGED_PUNCH',
+            targetId: attendanceId,
+            before,
+            after: { status: newStatus, reviewStatus: newReviewStatus, comment },
+            timestamp: new Date().toISOString(),
+        });
+        return { success: true };
+    });
+});
+exports.adminCorrectAttendance = (0, https_1.onCall)(async (request) => {
+    const context = request;
+    const data = request.data || {};
+    if (!context.auth || context.auth.token.role !== 'admin') {
+        throw new https_1.HttpsError('permission-denied', 'Admins only');
+    }
+    const { attendanceId, checkIn, checkOut, status, note } = data;
+    if (!attendanceId) {
+        throw new https_1.HttpsError('invalid-argument', 'attendanceId is required');
+    }
+    const attRef = db.collection('attendance').doc(attendanceId);
+    const doc = await attRef.get();
+    const before = doc.exists ? doc.data() : null;
+    let workedMinutes = doc.exists ? doc.data()?.workedMinutes || 0 : 0;
+    if (checkIn && checkOut) {
+        const inTime = new Date(checkIn).getTime();
+        const outTime = new Date(checkOut).getTime();
+        workedMinutes = Math.max(0, Math.floor((outTime - inTime) / 60000));
+    }
+    const updates = {
+        status,
+        note: note || 'Admin correction',
+        correctedBy: context.auth.uid,
+        correctedAt: new Date().toISOString(),
+    };
+    if (checkIn)
+        updates.checkIn = checkIn;
+    if (checkOut) {
+        updates.checkOut = checkOut;
+        updates.workedMinutes = workedMinutes;
+    }
+    await attRef.set(updates, { merge: true });
+    await db.collection('auditLogs').add({
+        actorUid: context.auth.uid,
+        actorName: context.auth.token.name || context.auth.token.email || 'Admin',
+        action: 'ADMIN_CORRECT_ATTENDANCE',
+        targetId: attendanceId,
+        before,
+        after: updates,
+        timestamp: new Date().toISOString(),
+    });
+    return { success: true };
+});
+// -------------------------------------------------------------
+// 5. Regularization Requests
+// -------------------------------------------------------------
+exports.requestRegularization = (0, https_1.onCall)(async (request) => {
+    const context = request;
+    const data = request.data || {};
+    if (!context.auth)
+        throw new https_1.HttpsError('unauthenticated', 'Not signed in');
+    if (context.auth.token.role !== 'employee') {
+        throw new https_1.HttpsError('permission-denied', 'Regularization is only for employees.');
+    }
+    const { date, requestedIn, requestedOut, reason } = data;
+    if (!date || !requestedIn || !requestedOut || !reason) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing regularization details');
+    }
+    const regRef = await db.collection('regularizations').add({
+        uid: context.auth.uid,
+        userName: context.auth.token.name || context.auth.token.email || 'Employee',
+        date,
+        requestedIn,
+        requestedOut,
+        reason,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+    });
+    return { id: regRef.id };
+});
+exports.reviewRegularization = (0, https_1.onCall)(async (request) => {
+    const context = request;
+    const data = request.data || {};
+    if (!context.auth ||
+        (context.auth.token.role !== 'manager' && context.auth.token.role !== 'admin')) {
+        throw new https_1.HttpsError('permission-denied', 'Managers and Admins only');
+    }
+    const { regularizationId, action, comment = '' } = data;
+    if (!regularizationId || !action) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing parameters');
+    }
+    const regRef = db.collection('regularizations').doc(regularizationId);
+    return await db.runTransaction(async (transaction) => {
+        const regDoc = await transaction.get(regRef);
+        if (!regDoc.exists)
+            throw new https_1.HttpsError('not-found', 'Regularization not found');
+        const reg = regDoc.data();
+        if (reg.status !== 'pending') {
+            throw new https_1.HttpsError('failed-precondition', 'Regularization is not pending');
+        }
+        const newStatus = action === 'approve' ? 'approved' : 'rejected';
+        transaction.update(regRef, {
+            status: newStatus,
+            comment,
+            decidedBy: context.auth.uid,
+            decidedAt: new Date().toISOString(),
+        });
+        if (action === 'approve') {
+            // Update or create attendance record
+            const attId = `${reg.uid}_${reg.date}`;
+            const attRef = db.collection('attendance').doc(attId);
+            const inDate = new Date(`${reg.date}T${reg.requestedIn}:00+05:30`);
+            const outDate = new Date(`${reg.date}T${reg.requestedOut}:00+05:30`);
+            const workedMinutes = Math.max(0, Math.floor((outDate.getTime() - inDate.getTime()) / 60000));
+            const settingsDoc = await transaction.get(db.collection('settings').doc('company'));
+            const settings = settingsDoc.data() || {};
+            const halfDayMinutes = Number(settings.halfDayMinutes || 270);
+            const attStatus = workedMinutes >= halfDayMinutes ? 'present' : 'half-day';
+            transaction.set(attRef, {
+                uid: reg.uid,
+                date: reg.date,
+                checkIn: inDate.toISOString(),
+                checkOut: outDate.toISOString(),
+                workedMinutes,
+                status: attStatus,
+                note: `Regularized: ${reg.reason}`,
+                reviewStatus: 'none',
+            }, { merge: true });
+        }
+        const auditRef = db.collection('auditLogs').doc();
+        transaction.set(auditRef, {
+            actorUid: context.auth.uid,
+            actorName: context.auth.token.name || context.auth.token.email || 'Manager',
+            action: action === 'approve' ? 'APPROVE_REGULARIZATION' : 'REJECT_REGULARIZATION',
+            targetId: regularizationId,
+            before: { status: 'pending' },
+            after: { status: newStatus, comment },
+            timestamp: new Date().toISOString(),
+        });
+        return { success: true };
+    });
+});
+// -------------------------------------------------------------
+// 6. Scheduled Background Jobs
+// -------------------------------------------------------------
+exports.nightlyAttendanceJob = (0, scheduler_1.onSchedule)({ schedule: '59 23 * * *', timeZone: 'Asia/Kolkata' }, async () => {
+    const { dateStr } = getISTDateTime();
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0=Sun, 6=Sat
+    const settingsDoc = await db.collection('settings').doc('company').get();
+    const settings = settingsDoc.data() || {};
+    const weeklyOffs = settings.weeklyOffs || [0, 6];
+    // Check if weekend
+    if (weeklyOffs.includes(dayOfWeek)) {
+        return;
+    }
+    // Check if holiday
+    const holidayDoc = await db.collection('holidays').doc(dateStr).get();
+    if (holidayDoc.exists) {
+        return;
+    }
+    // Fetch active users
+    const usersSnap = await db.collection('users').where('isActive', '==', true).get();
+    for (const userDoc of usersSnap.docs) {
+        if (userDoc.data()?.role !== 'employee')
+            continue;
+        const uid = userDoc.id;
+        const attId = `${uid}_${dateStr}`;
+        const attDoc = await db.collection('attendance').doc(attId).get();
+        if (!attDoc.exists) {
+            // Check if user had an approved leave for today
+            const leaveSnap = await db
+                .collection('leaveRequests')
+                .where('uid', '==', uid)
+                .where('status', '==', 'approved')
+                .where('startDate', '<=', dateStr)
+                .get();
+            const onLeave = leaveSnap.docs.some(doc => {
+                const lData = doc.data();
+                const end = lData.endDate || lData.startDate;
+                return end >= dateStr;
+            });
+            if (onLeave) {
+                await db.collection('attendance').doc(attId).set({
+                    uid,
+                    date: dateStr,
+                    status: 'leave',
+                    note: 'Approved Leave',
+                    reviewStatus: 'none',
+                });
+            }
+            else {
+                // Absent
+                await db.collection('attendance').doc(attId).set({
+                    uid,
+                    date: dateStr,
+                    status: 'absent',
+                    note: 'Marked absent by nightly attendance job',
+                    reviewStatus: 'none',
+                });
+            }
+        }
+    }
+    return;
+});
+exports.monthlyLeaveAllocation = (0, scheduler_1.onSchedule)({ schedule: '0 0 1 * *', timeZone: 'Asia/Kolkata' }, async () => {
+    const { dateStr } = getISTDateTime();
+    const year = dateStr.split('-')[0];
+    const usersSnap = await db.collection('users').where('isActive', '==', true).get();
+    const batch = db.batch();
+    for (const userDoc of usersSnap.docs) {
+        if (userDoc.data()?.role !== 'employee')
+            continue;
+        const uid = userDoc.id;
+        const balanceRef = db.collection('leaveBalances').doc(`${uid}_${year}`);
+        const balanceDoc = await balanceRef.get();
+        if (balanceDoc.exists) {
+            const data = balanceDoc.data();
+            const currentAllotted = data.balances?.unified?.allotted || 0;
+            batch.update(balanceRef, {
+                'balances.unified.allotted': currentAllotted + 1.5,
+            });
+        }
+        else {
+            batch.set(balanceRef, {
+                uid,
+                year,
+                balances: {
+                    unified: {
+                        allotted: 1.5,
+                        used: 0,
+                    },
+                },
+            });
+        }
+    }
+    await batch.commit();
+    return;
+});
+exports.yearlyReset = (0, scheduler_1.onSchedule)({ schedule: '0 0 1 1 *', timeZone: 'Asia/Kolkata' }, async () => {
+    const { dateStr } = getISTDateTime();
+    const newYear = dateStr.split('-')[0];
+    const usersSnap = await db.collection('users').where('isActive', '==', true).get();
+    const batch = db.batch();
+    for (const userDoc of usersSnap.docs) {
+        if (userDoc.data()?.role !== 'employee')
+            continue;
+        const uid = userDoc.id;
+        const balanceRef = db.collection('leaveBalances').doc(`${uid}_${newYear}`);
+        batch.set(balanceRef, {
+            uid,
+            year: newYear,
+            balances: {
+                unified: {
+                    allotted: 18,
+                    used: 0,
+                },
+            },
+        });
+    }
+    await batch.commit();
+    return;
+});
+exports.locationRetentionJob = (0, scheduler_1.onSchedule)({ schedule: '0 2 * * 0', timeZone: 'Asia/Kolkata' }, // Weekly on Sunday 2:00 AM IST
+async () => {
+    // 180 days retention
+    const retentionDate = new Date();
+    retentionDate.setDate(retentionDate.getDate() - 180);
+    const retentionDateStr = retentionDate.toISOString().split('T')[0];
+    const oldRecords = await db
+        .collection('attendance')
+        .where('date', '<', retentionDateStr)
+        .limit(500)
+        .get();
+    const batch = db.batch();
+    for (const doc of oldRecords.docs) {
+        batch.update(doc.ref, {
+            'punchInMeta.lat': firestore_1.FieldValue.delete(),
+            'punchInMeta.lng': firestore_1.FieldValue.delete(),
+            'punchInMeta.ip': firestore_1.FieldValue.delete(),
+            'punchOutMeta.lat': firestore_1.FieldValue.delete(),
+            'punchOutMeta.lng': firestore_1.FieldValue.delete(),
+            'punchOutMeta.ip': firestore_1.FieldValue.delete(),
+        });
+    }
+    await batch.commit();
+    return;
+});
+//# sourceMappingURL=index.js.map

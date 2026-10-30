@@ -1,0 +1,250 @@
+<div class="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
+  <!-- Header with Add Action -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Employee Directory</h2>
+      <p class="text-slate-500 text-sm mt-0.5">
+        Manage employee accounts, assign manager relationships, and configure access roles.
+      </p>
+    </div>
+
+    <button 
+      mat-flat-button 
+      color="primary" 
+      (click)="openAddModal()" 
+      class="!h-11 !px-5 !rounded-xl self-start sm:self-auto">
+      <mat-icon class="mr-1">person_add</mat-icon>
+      Add Employee
+    </button>
+  </div>
+
+  <!-- Search & Role Filter Bar -->
+  <div class="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-3 w-full sm:w-auto flex-1 max-w-md">
+      <div class="relative w-full">
+        <mat-icon class="absolute left-3.5 top-3 text-slate-400 !w-5 !h-5 !text-[20px]">search</mat-icon>
+        <input 
+          type="text" 
+          [value]="searchQuery()" 
+          (input)="searchQuery.set($any($event.target).value)" 
+          placeholder="Search by employee name or email..." 
+          class="w-full pl-11 pr-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <mat-form-field appearance="outline" class="w-40 !mb-0" subscriptSizing="dynamic">
+        <mat-select [value]="roleFilter()" (selectionChange)="roleFilter.set($event.value)">
+          <mat-option value="all">All Roles</mat-option>
+          <mat-option value="employee">Employees</mat-option>
+          <mat-option value="manager">Managers</mat-option>
+          <mat-option value="admin">Admins</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <!-- Employee Directory Table -->
+  <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden p-6 sm:p-8">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-sm">
+        <thead>
+          <tr class="border-b border-slate-200 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <th class="py-3 px-4">Employee</th>
+            <th class="py-3 px-4">Role</th>
+            <th class="py-3 px-4">Reports To</th>
+            <th class="py-3 px-4">Joined</th>
+            <th class="py-3 px-4">Status</th>
+            <th class="py-3 px-4 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr *ngFor="let u of filteredUsers()" class="hover:bg-slate-50 transition-colors" [class.opacity-50]="!u.isActive">
+            <td class="py-3.5 px-4 whitespace-nowrap">
+              <div class="font-bold text-slate-900">{{ u.name }}</div>
+              <div class="text-xs text-slate-400 font-normal">{{ u.email }}</div>
+            </td>
+            <td class="py-3.5 px-4 whitespace-nowrap">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider"
+                    [ngClass]="{
+                      'bg-indigo-100 text-indigo-800': u.role === 'admin',
+                      'bg-teal-100 text-teal-800': u.role === 'manager',
+                      'bg-slate-100 text-slate-700': u.role === 'employee'
+                    }">
+                {{ u.role }}
+              </span>
+            </td>
+            <td class="py-3.5 px-4 text-slate-600 whitespace-nowrap">
+              {{ getManagerName(u.managerId) }}
+            </td>
+            <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+              {{ u.joinDate | date:'mediumDate' }}
+            </td>
+            <td class="py-3.5 px-4 whitespace-nowrap">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                    [ngClass]="u.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'">
+                <span class="w-1.5 h-1.5 rounded-full" [ngClass]="u.isActive ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+                {{ u.isActive ? 'Active' : 'Deactivated' }}
+              </span>
+            </td>
+            <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1">
+              <button 
+                mat-icon-button 
+                (click)="openEditModal(u)" 
+                matTooltip="Edit Employee Role & Manager">
+                <mat-icon class="text-slate-600">edit</mat-icon>
+              </button>
+
+              <button 
+                mat-icon-button 
+                [disabled]="togglingUid() === u.uid"
+                (click)="toggleUserActive(u)" 
+                [matTooltip]="u.isActive ? 'Deactivate Employee' : 'Reactivate Employee'">
+                <mat-icon [class.text-rose-600]="u.isActive" [class.text-emerald-600]="!u.isActive">
+                  {{ u.isActive ? 'block' : 'check_circle' }}
+                </mat-icon>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add New Employee -->
+<div *ngIf="showAddModal()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+  <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div>
+        <h3 class="text-lg font-bold text-slate-900">Add New Employee</h3>
+        <p class="text-xs text-slate-400">Creates user credentials, sets custom claims and leave quota</p>
+      </div>
+      <button mat-icon-button (click)="closeAddModal()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <form [formGroup]="addForm" (ngSubmit)="submitCreateEmployee()" class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Full Name</label>
+        <mat-form-field appearance="outline" class="w-full">
+          <input matInput formControlName="name" placeholder="John Doe">
+          <mat-error *ngIf="addForm.get('name')?.hasError('required')">Name is required</mat-error>
+        </mat-form-field>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Work Email</label>
+        <mat-form-field appearance="outline" class="w-full">
+          <input matInput type="email" formControlName="email" placeholder="john@company.com">
+          <mat-error *ngIf="addForm.get('email')?.hasError('required')">Email is required</mat-error>
+          <mat-error *ngIf="addForm.get('email')?.hasError('email')">Invalid email address</mat-error>
+        </mat-form-field>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Temporary Password</label>
+        <mat-form-field appearance="outline" class="w-full">
+          <input matInput type="password" formControlName="password" placeholder="Minimum 6 characters">
+          <mat-error *ngIf="addForm.get('password')?.hasError('required')">Password is required</mat-error>
+          <mat-error *ngIf="addForm.get('password')?.hasError('minlength')">Minimum 6 characters required</mat-error>
+        </mat-form-field>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Role</label>
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-select formControlName="role">
+              <mat-option value="employee">Employee</mat-option>
+              <mat-option value="manager">Manager</mat-option>
+              <mat-option value="admin">Admin</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Assign Manager</label>
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-select formControlName="managerId">
+              <mat-option value="">None (Self)</mat-option>
+              <mat-option *ngFor="let m of managers()" [value]="m.uid">{{ m.name }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button mat-button type="button" (click)="closeAddModal()">Cancel</button>
+        <button 
+          mat-flat-button 
+          color="primary" 
+          type="submit" 
+          [disabled]="addForm.invalid || isCreating()"
+          class="!h-11 !px-6 !rounded-xl">
+          <mat-spinner *ngIf="isCreating()" diameter="18" class="mr-2"></mat-spinner>
+          <span>{{ isCreating() ? 'Creating...' : 'Create Employee' }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Edit Employee -->
+<div *ngIf="editingUser()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+  <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div>
+        <h3 class="text-lg font-bold text-slate-900">Edit Employee</h3>
+        <p class="text-xs text-slate-400">{{ editingUser()?.email }}</p>
+      </div>
+      <button mat-icon-button (click)="closeEditModal()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <form [formGroup]="editForm" (ngSubmit)="submitUpdateEmployee()" class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Full Name</label>
+        <mat-form-field appearance="outline" class="w-full">
+          <input matInput formControlName="name">
+        </mat-form-field>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Role</label>
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-select formControlName="role">
+            <mat-option value="employee">Employee</mat-option>
+            <mat-option value="manager">Manager</mat-option>
+            <mat-option value="admin">Admin</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Reports To (Manager)</label>
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-select formControlName="managerId">
+            <mat-option value="">None (Self)</mat-option>
+            <mat-option *ngFor="let m of managers()" [value]="m.uid">{{ m.name }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button mat-button type="button" (click)="closeEditModal()">Cancel</button>
+        <button 
+          mat-flat-button 
+          color="primary" 
+          type="submit" 
+          [disabled]="editForm.invalid || isUpdating()"
+          class="!h-11 !px-6 !rounded-xl">
+          <mat-spinner *ngIf="isUpdating()" diameter="18" class="mr-2"></mat-spinner>
+          <span>{{ isUpdating() ? 'Saving...' : 'Save Changes' }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
